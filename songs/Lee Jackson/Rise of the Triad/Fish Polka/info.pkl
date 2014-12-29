@@ -1,0 +1,21 @@
+(dp0
+S'Metronome'
+p1
+I00
+sS'PlayerTrack'
+p2
+I0
+sS'Difficulty'
+p3
+I0
+sS'Sandbox'
+p4
+I1
+sS'TempoPercent'
+p5
+I100
+sS'Name'
+p6
+S'Fish Polka'
+p7
+s.

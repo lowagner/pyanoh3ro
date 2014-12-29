@@ -1,0 +1,5 @@
+See info.py in this directory for a way to generate
+the info.pkl files that are found in each piece directory.
+
+If editing compositions in the pyano3 "Create" mode,
+it will take care of the .pkl files for you automatically.

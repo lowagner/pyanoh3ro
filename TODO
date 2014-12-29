@@ -1,0 +1,204 @@
+# KNOWN ISSUES
+================================================
+
+## choosing difficulty in play mode is wonky
+
+Need to grab only midi files from piece directory.
+
+
+## changing instrument on one song affects other songs using defaults
+
+editing one song, changing its instrument, and going over to
+edit another song may result in keeping the instrument from the
+previous song.  don't panic, just quit and restart program.
+this happens if your next song doesn't specify the instrument;
+you can work around this by setting "i piano" on the command line,
+or whatever instrument you like, for your song.
+
+
+## copy/pasting
+
+bug in deleting, sometimes note off/on gets left behind,
+and a weird gray note stretches up across the screen.
+your song will soon meet its doom, don't attempt to save (?).
+sorry if this ruins your groovin'.  let me know how to replicate.
+
+
+## switching time signatures
+
+can do a little weird things with how the measure ticks
+are displayed (and subdivisions).
+
+
+# POSSIBLE BUGS (NEED INVESTIGATION)
+================================================
+
+Players switching from insert mode to nav mode without having
+finished playing a note on their midi instrument.
+
+
+
+# EXTENDING CODE WITH MORE FEATURES
+================================================
+roughly in order of when i'm interested in doing them
+
+## elongate/extend
+
+e:  extend note by 0.5*self.currentnoteticks
+E:  extend note by 1*self.currentnoteticks
+
+
+## toggle staccato (s):
+
+reduce note duration by some config fraction (config.EDITstacatto)
+or bring it back to full
+
+
+## shorten note (S)
+
+reduce note duration by 50%
+
+
+## reverse
+
+r:  reverse note selection (in time)
+R:  reverse note selection (left to right)
+
+
+## search help box
+
+ctrl+/  -   search help box
+
+
+## looping:
+
+loop between two planted bookmarks.
+
+also save bookmarks to the pkl file.
+
+
+## quick-insert (q)
+
+in select mode, where a visual block is highlighted (notes > 5):
+q, will give a quick prompt, asks for key.
+    C7 = major C with 7.  C E G B
+    c7 = minor C with 7.  C Eb G B
+    G = G chord = G B D
+    etc.
+then it will add in those notes in that selection.
+
+you can also augment:
+    C/  = ascending arpeggio in C major
+    C// = two ascending arpeggios, back to back
+    C\  = descending arpeggio
+    C/\ = ascend and descend
+    C~  = random arpeggio
+arpeggio's will include notes of the current note-length.
+
+
+## make cursor able to have a nonzero y value
+
+so that you can see what's immediately behind you.
+will need to change currentabsoluteticks to cursorabsoluteticks
+in a variety of spots (not everywhere)
+
+
+## scale:
+
+command mode
+scale selected notes by some factor
+
+
+## metapiece
+
+make editting difficulties possible
+
+
+## loading a song
+
+maybe:
+no "edit choice menu" -- make player load from ddr-edit command line.
+
+
+## helpful stuff for play mode:
+
+notes off screen to the left/right of your current view,
+on the current line.
+- flashing arrows appear on the side(s) you should look into.
+
+shift center of play for notes that are coming down from off-screen
+if they exist on both sides, shrink keyboard
+
+points for playing in non-sandbox mode
+
+
+## background music
+
+load an image for the piece (if one exists)
+
+allow background music (.ogg files), synch with midi track.
+BGmusic = X.ogg
+STARTBGmusic = X # start the BG music X milli-seconds after the midi track starts.
+                 #  - negative numbers are milli-seconds before the midi track stars
+                 #  - positive numbers are after the midi track starts
+
+
+
+
+## commands
+
+v (set velocity)
+vg (set velocity gradient) - need a cursor selection going
+
+namem X               - names/renames the current measure as X.  fails if X is not unique.
+set playerstart X     - X = True or False only.  global variable, independent of location.
+add playertrack       - add this track to allowed player tracks 
+
+edit Difficulty X     - switch over to editting the PlayerTrack for difficulty X
+d X                   - shorthand for "edit Difficulty X"
+transpose X           - transpose all non-drum tracks and difficulties by X, an integer 
+
+SEARCH AND REPLACE    MOVING NOTES AROUND IF THEY ARE ON
+the following commands keep the duration of a note, but move it around, or change it into
+a chord, depending on what you tell it!
+s/G3/G#3/l            - set G3 to G#3 on this line (l = line/local)
+s/G3/G#3/g            - set G3 to G#3 everywhere (g = global)
+s/G/G#/l              - similar to s/G3/G#3/l, but does it in every octave
+s/G/G#/g              - similar to s/G3/G#3/g, but does it in every octave
+s/G/A+/l              - set every G on this line to the A in the octave above it.
+s/G/A-/g              - set every G to the A in the octave below it, everywhere
+NOTE THAT THE OCTAVES ARE DEFINED AS STARTING FROM THE FIRST NOTE GIVEN in the REPLACE SECTION.
+s/B/D/g               - therefore moves every B up 3 semitones to D. 
+s/GBD-/GBD/g          - moves the III to the I, or whatever that is technically speaking,
+                        and the G stays in the same position
+s/DB-F#/DF#B/g        - moves a minor I to the III, and D stays put
+s/BDF#/DF#B+/g        - moves a minor I to the III, D stays put.
+s/BDF#/DF#B/g         - does nothing
+s/B/DF#/l             - replaces any B in the current line with a D and F# 
+EVEN MORE INTENSE
+so "s/X/Y/q" should do what's intended when X is a single note.
+however, if X is a chord, then the replacement will only happen if all notes in the chord
+share the same length and start at the same time.  
+To be more aggressive, use a capital S, i.e. "S/X/Y/q".  This command
+will then execute as long as the notes in the chord X are all on at the same instant,
+regardless of when each individual note begins or ends.
+You can also use selections to change notes:
+COMMAND               RESULT
+s/G/A/v               - set every G which is completely selected in a visual block to A
+s/G/A/V               - set every G which is even partially selected in a visual block to A
+JUST PLAIN SEARCH.  without replacing, you can look for chords/notes via
+s/GAB                 - find the next-occuring chord GAB, if it exists...
+
+
+## navigation
+
+
+THINGS NOT IMPLEMENTED YET.  MAYBE NEVER WILL, OR WILL CHANGE KEYS.
+press u for undo, U for redo
+(save copies of the piece in a folder.)
+
+press t to trim any notes which are currently under the cursor:
+  - rounds to the nearest nonzero multiple of Duration,
+  - and also moves its start-point again to the nearest multiple of Duration
+press T to trim as above, but to delete any notes which would round down to zero.
+
