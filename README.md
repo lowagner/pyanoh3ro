@@ -1,7 +1,7 @@
 PyanoH3ro
 =========
 
-ABOUT
+About
 -----
 
 PyanoH3ro is an open-source python code for creating, playing, and learning music
@@ -48,7 +48,7 @@ For the motivated, read the TODO list in the root directory for possible things
 to work on.
 
 
-DEPENDENCIES
+Dependencies
 ------------
 
 You must install the following in order for PyanoH3ro to run at all:
@@ -73,7 +73,7 @@ Let me know if there are any other dependencies not listed above,
 or if you have troubles installing/running even after doing the above.
 
 
-INSTALLATION / RUNNING
+Installation / running
 ----------------------
 
 You can create a fork of this github project (recommended if you want to edit the
@@ -122,7 +122,7 @@ and the Navigation mode there gives you an idea of what you can do in the Sandbo
 of "Play".
 
 
-INSPIRATION
+Inspiration
 -----------
 
 I am a classically trained pianist who took lessons from second
