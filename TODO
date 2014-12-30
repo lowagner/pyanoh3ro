@@ -191,3 +191,12 @@ press t to trim any notes which are currently under the cursor:
   - and also moves its start-point again to the nearest multiple of Duration
 press T to trim as above, but to delete any notes which would round down to zero.
 
+
+
+
+# REFACTORING CODE
+================================================
+
+## make a class which combines commands with their history
+
+for both search functionality and command mode
