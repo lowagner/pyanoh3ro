@@ -115,6 +115,8 @@ class DDRClass( GameChunkClass ):
         
         self.play = False # default to not immediately playing.  fixed in derivative classes
         self.selectednotes = []
+        self.looping = False
+        self.loopingbookmarkindex = 0
 
     def readnotecode( self, notecode ):
         # try to find the note duration based on the notecode
@@ -493,24 +495,27 @@ class DDRClass( GameChunkClass ):
             self.keymusic.displaceallmusic( tickchange * self.pixelspertick )
             self.currentabsoluteticks += tickchange
             
-            # check if any notes should be played (or hit by player, in play-mode)
-            for i in range(len(self.readynotes)):
-                track = self.readynotes[i]
-                # if the first note has its absolute ticks less than the current absolute ticks...
-                # track is a list of notes, each note is [ pitch, velocity, absoluteticks ]
-                while len(track) and (track[0][-1] <= self.currentabsoluteticks):
-                    soundme = track.popleft()
-                    if i in self.noisytracks:
-                        if soundme[1]: # if there is velocity...
-                            midi.startnote( soundme[0], soundme[1], self.piece.channels[i] )  
-                        else:
-                            midi.endnote( soundme[0], self.piece.channels[i] )  
-            
-            # get notes that are still coming
-            if self.currentabsoluteticks > self.loadeduntil-self.tickrange: # stay two steps ahead
-                self.loadmusic()
-        else:
-            pass
+            if self.looping and self.currentabsoluteticks >= self.bookmarkticks[self.loopingbookmarkindex+1]:
+                self.setcurrentticksandload( self.bookmarkticks[self.loopingbookmarkindex] )
+
+            else:
+                # not looping, or we are proceeding as normal 
+                # check if any notes should be played (or hit by player, in play-mode)
+                for i in range(len(self.readynotes)):
+                    track = self.readynotes[i]
+                    # if the first note has its absolute ticks less than the current absolute ticks...
+                    # track is a list of notes, each note is [ pitch, velocity, absoluteticks ]
+                    while len(track) and (track[0][-1] <= self.currentabsoluteticks):
+                        soundme = track.popleft()
+                        if i in self.noisytracks:
+                            if soundme[1]: # if there is velocity...
+                                midi.startnote( soundme[0], soundme[1], self.piece.channels[i] )  
+                            else:
+                                midi.endnote( soundme[0], self.piece.channels[i] )  
+                
+                # get notes that are still coming
+                if self.currentabsoluteticks > self.loadeduntil-self.tickrange: # stay two steps ahead
+                    self.loadmusic()
 
     def process( self, event, midi ):
         if event.type == pygame.KEYDOWN:
@@ -551,12 +556,45 @@ class DDRClass( GameChunkClass ):
         # other events are only allowed in sandbox mode
         elif self.sandbox:
             if event.key == pygame.K_SPACE: 
+                if self.play and self.looping:
+                    # jump back to the beginning if we were looping
+                    self.currentabsoluteticks = self.bookmarkticks[self.loopingbookmarkindex]
+                self.looping = False    # default to stop looping.
                 midi.clearall()
                 self.play = not self.play
                 if not self.play:
+                    # we stopped play.
                     self.setcurrentticksandload( 
-                        self.currentnoteticks * int(round(1.0*self.currentabsoluteticks / self.currentnoteticks) )
+                        self.roundtonoteticks( self.currentabsoluteticks )
                     )
+                else:
+                    # we started play
+                    if (pygame.key.get_mods() & pygame.KMOD_SHIFT):
+                        # if shift was pressed, check if we can loop.
+                        self.looping = False    # we can't unless we can.
+                        if len(self.bookmarkticks) < 2:
+                            self.setalert("Need another bookmark to start looping (shift+SPACE)")
+                        else:
+                            bookmarkindex = 0
+                            self.loopingbookmarkindex = None
+                            while bookmarkindex < len(self.bookmarkticks):
+                                if self.bookmarkticks[bookmarkindex] == self.currentabsoluteticks:
+                                    self.loopingbookmarkindex = bookmarkindex
+                                    break
+                                bookmarkindex += 1
+                            if self.loopingbookmarkindex == None:
+                                self.setalert("Not at a bookmark, can't loop here.")
+                            else:
+                                if self.loopingbookmarkindex < len(self.bookmarkticks)-1:
+                                    if self.bookmarkticks[self.loopingbookmarkindex+1] > self.currentabsoluteticks:
+
+                                        self.setalert("Looping from this bookmark to the next.")
+                                        self.looping = True
+                                    else:
+                                        self.setalert("Next bookmark was placed behind this.")
+                                else:
+                                    self.setalert("Not enough bookmarks to loop.")
+
                     
                 return 1
             elif event.key == pygame.K_g: # press key g

@@ -83,13 +83,6 @@ R:  reverse note selection (left to right)
 ctrl+/  -   search help box
 
 
-## looping:
-
-loop between two planted bookmarks.
-
-also save bookmarks to the pkl file.
-
-
 ## quick-insert (q)
 
 in select mode, where a visual block is highlighted (notes > 5):

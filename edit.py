@@ -87,6 +87,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                    "        `   back to last non-trivial jump point",
                    "   ctrl+b   add/delete bookmark here",
                    "      b|B   cycle forward|backward through bookmarks",
+                   "shift+SPACE start looping from a bookmark to the next",
                    "        c   toggle click track (metronome)",
                    "        C   toggle click track volume loud/soft",
                     ]
