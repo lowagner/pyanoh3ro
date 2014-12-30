@@ -3,6 +3,7 @@ import pygame
 import pygame.midi
 from mingus.midi import fluidsynth
 import config
+import os
 
 class MidiClass:
     def __init__( self ):
@@ -11,7 +12,8 @@ class MidiClass:
 ##modulation(channel, value)
 ##pan(channel, value)
 
-        if not fluidsynth.init( config.SOUNDfont, config.FLUIDSYNTHdriver ):
+        if not fluidsynth.init( os.path.join( config.RESOURCEdirectory, config.SOUNDfont), 
+            config.FLUIDSYNTHdriver ):
             sys.exit(" COULD NOT LOAD SOUNDFONT PianoMenu.sf2 ")
         # set instruments on each channel.  
         fluidsynth.set_instrument( config.PIANOchannel,    ## channel to set instrument on

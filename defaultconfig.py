@@ -42,11 +42,16 @@ NOTEwidth = 20
 KEYwidth = 50
 PIXELSperbeat = 100
 
+# where to find the songs:
+PIECEdirectory = "songs"
+# where to find resources:
+RESOURCEdirectory = "resources"
+
 # MORE SOUND SETTINGS
 # instrument bank.  originally copied from /usr/share/sounds/sf2/FluidR3_GM.sf2,
-# but then I found an augmented version online.  See copyright in attrib.
-SOUNDfont = "resources/FluidR3_GM-2.sf2"
-#SOUNDfont = "resources/The_Nes_Soundfont.sf2"
+# but then I found an augmented version online.  Search the internet for it:
+SOUNDfont = "FluidR3_GM-2.sf2"  # put it in your RESOURCEdirectory.
+#SOUNDfont = "The_Nes_Soundfont.sf2"  # you can also make chiptunes if you like.
 # 0, 1 = piano
 # 2 = honky tonk piano
 # 3 = tacky piano
@@ -125,6 +130,3 @@ GAMESTATEmainmenu = 4 # main menu
 GAMESTATEsettings = 5 # settings menu
 GAMESTATEeditmenu = 6 # menu to choose which piece to edit
 GAMESTATEedit = 7 # editting/creating a piece
-
-PIECEdirectory = "songs"
-RESOURCEdirectory = "resources"
