@@ -49,6 +49,9 @@ class EditClass( DDRClass ): # inherit from the DDRClass
         self.helper = { 
             self.NAVIGATIONstate : [ 0, #start line
                  [ " ctrl+j|k   scroll this helper list down|up",
+                   "   ctrl+/   search this helper list",
+                   " ctrl+n|N   repeat search forward|backward",
+                   "",
                    "  h|j|k|l   move left|down|up|right",
                    "  H|J|K|L   move left|down|up|right faster",
                    "      g|G   go to beginning|end of piece",
@@ -57,18 +60,21 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                    "ESC|/|:|;   go to command mode",
                    "        i   go to insert mode",
                    "        a   insert mode:  rolls on input",
+                   "        c   toggle click track (metronome)",
+                   "        C   toggle click track volume loud/soft",
                    "",
+                   "1-9|0|-|+   change time grid duration",
+                   "      o|O   offset time grid forward|backward",
                    "        q   quick add note at cursor",
                    "        Q   add note at cursor and advance",
-                   "        m   merge notes under cursor",
-                   "        M   merge with next note",
                    "      [|]   lower|raise volume at cursor",
                    "shift+[|]   quickly decrease|increase volume",
                    "    ENTER   play note at cursor",
                    "shift+ENT   play existing chord on line",
                    "",
-                   "1-9|0|-|+   change time grid duration",
-                   "      o|O   offset time grid forward|backward",
+                   "      v|V   activate/deactivate visual block|line",
+                   "   ctrl+v   swap cursor/anchor of visual block",
+                   " ctrl+h|l   swap cursor/anchor key position",
                    "",
                    "        y   yank (copy) notes with any overlap",
                    "        p   paste relative to cursor",
@@ -78,9 +84,10 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                    "      X|D   carve|delete but without copying.",
                    "        P   paste and remove notes from underlying region",
                    "   ctrl+p   swap:  paste but copy existing notes",
-                   "      v|V   activate/deactivate visual block|line",
-                   "   ctrl+v   swap cursor/anchor of visual block",
-                   " ctrl+h|l   swap cursor/anchor key position",
+                   "        m   merge notes under cursor",
+                   "        M   merge with next note",
+                   "      e|E   extend notes by half|full grid duration",
+                   "      s|S   shorten notes by half|quarter",
                    "",
                    "  PgUp|Dn   move up|down by one screen",
                    " HOME|END   move all the way left|right",
@@ -88,8 +95,6 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                    "   ctrl+b   add/delete bookmark here",
                    "      b|B   cycle forward|backward through bookmarks",
                    "shift+SPACE start looping from a bookmark to the next",
-                   "        c   toggle click track (metronome)",
-                   "        C   toggle click track volume loud/soft",
                     ]
                ],
             self.SELECTstate : [ 0, #start line
@@ -137,6 +142,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                ],
             }
         self.helperlines = [] # current list of text to be written to the screen
+        self.lasthelpsearched = ""
         self.helperlinemax = max(1, config.HELPERLINEmax)
 
         self.setstate( state=self.NAVIGATIONstate )
@@ -153,7 +159,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
         self.askingfor = ""
         self.listeningmessage = ""
         self.listeninghistory = { "quick chord" : deque([]),
-                                  "annotation name" : deque([]) }
+                                  "search help" : deque([]) }
         self.listeningindex = -1
         self.listeningact = None
 
@@ -185,19 +191,44 @@ class EditClass( DDRClass ): # inherit from the DDRClass
         '''here we provide methods for changing things.
         we don't process midi input here; rather we allow for midi output
         when we want to, say on pressing some non-midi device it makes a noise.'''
+
         if self.listeningfortext and event.type == pygame.KEYDOWN:
             # if we're waiting for a message from the user
-            if event.key == pygame.K_BACKSPACE:
+            if event.key == 27:
+                if self.listeningindex < 0:
+                    if len(self.listeningmessage):
+                        if len(self.listeninghistory[self.askingfor]):
+                            if self.listeninghistory[self.askingfor][0] != self.listeningmessage:
+                                self.listeninghistory[self.askingfor].appendleft(self.listeningmessage)
+                        else:
+                            self.listeninghistory[self.askingfor].appendleft(self.listeningmessage)
+                else:
+                    # if we were looking at the listeninghistory[self.askingfor], see if we did not
+                    # edit the command we used previously:
+                    if self.listeningmessage != self.listeninghistory[self.askingfor][self.listeningindex]:
+                        self.listeninghistory[self.askingfor] = deque( 
+                            list(itertools.islice(self.listeninghistory[self.askingfor],0,self.listeningindex))+
+                            [self.listeningmessage] +
+                            list(itertools.islice(self.listeninghistory[self.askingfor],self.listeningindex,len(self.listeninghistory[self.askingfor]))),
+                            config.COMMANDhistory )
+                        #self.listeningindex -= 1
+                    
+                self.listeningindex = -1
+                self.listeningmessage = ""
+                self.listeningfortext = False
+                return {} 
+                
+            elif event.key == pygame.K_BACKSPACE:
                 self.listeningmessage = self.listeningmessage[0:-1] # take out last letter
             elif event.key == pygame.K_RETURN:
                 self.listeningfortext = False
                 if self.listeningmessage:
                     # add the message to the history:
                     self.listeninghistory[self.askingfor].appendleft( self.listeningmessage )
-                    # destroy the old message
-                    self.listeningmessage = ""
                     # enact the message:
                     self.listeningact(self.listeningmessage) 
+                    # destroy the old message
+                    self.listeningmessage = ""
 
             elif event.key == pygame.K_UP:
                 # navigate the listening history
@@ -318,6 +349,10 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                     newletter = newletter.upper() #make it uppercase
                 self.listeningmessage += newletter #add it to the message
             return {}
+
+        elif self.metanav( event, midi ):
+            return {}
+
         elif self.state == self.NAVIGATIONstate:
             return self.navprocess( event, midi )
         
@@ -506,8 +541,6 @@ class EditClass( DDRClass ): # inherit from the DDRClass
 #                        # so that it continues to capture the line it was originally on.
                         
                 return {}
-            elif self.metanav( event, midi ):
-                return {}
             elif self.commongrid( event, midi ):
                 return {}
 
@@ -542,8 +575,6 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                 else:
                     self.setalert( "Friendly insert" )
             elif self.commonnav( event, midi ):
-                return {}
-            elif self.metanav( event, midi ):
                 return {}
             elif self.commongrid( event, midi ):
                 return {}
@@ -580,9 +611,9 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                         return {}
                     elif self.command == "console":
                         self.listeningfortext = True
-                        self.askingfor = "annotation name"
-                        self.listeningact = self.addremovetext
-                        self.wrapupcommand("choose annotation")
+                        self.askingfor = "search help"
+                        self.listeningact = self.searchhelp
+                        self.wrapupcommand("search help")
                         return {}
                     else:
                         split = self.command.split()
@@ -770,9 +801,6 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                 self.command = "" # kill command and go back to nav mode
                 self.setstate( state=self.NAVIGATIONstate  )
             
-            elif self.metanav( event, midi ):
-                return {}
-
             elif event.key == pygame.K_UP:
                 # navigate the command history
                 if self.commandlistindex < 0:
@@ -956,7 +984,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
         
     def metanav( self, event, midi ):
         # metanav for things that are ctrl based...
-        if pygame.key.get_mods() & pygame.KMOD_CTRL:
+        if event.type == pygame.KEYDOWN and pygame.key.get_mods() & pygame.KMOD_CTRL:
             if event.key == pygame.K_j or event.key == pygame.K_DOWN: # press down
                 # move down in the current helper list
                 if self.helper[ self.state ][0] < len(self.helper[ self.state ][1]) - self.helperlinemax:
@@ -969,6 +997,20 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                     self.helper[ self.state ][0] -= 1
                     self.sethelperlines( self.state )
                 return 1
+            elif ( event.key == pygame.K_SLASH ):
+                self.listeningfortext = True
+                self.askingfor = "search help"
+                self.listeningact = self.searchhelp
+                self.setalert("Type in text to search in help.")
+                return 1
+            elif ( event.key == pygame.K_n ):
+                if self.lasthelpsearched:
+                    self.searchhelp( self.lasthelpsearched, 
+                        pygame.key.get_mods() & pygame.KMOD_SHIFT )
+                else:
+                    self.setalert("Try ctrl+/ to search help.")
+                return 1
+                
                 
         return 0
 
@@ -977,6 +1019,62 @@ class EditClass( DDRClass ): # inherit from the DDRClass
     def addremovetext( self, text ):
         return self.piece.addremovetextevent( text, self.roundtonoteticks( self.currentabsoluteticks ),
             self.currenttrack )
+
+    def searchhelp( self, text, gobackwards=0 ):
+        self.lasthelpsearched = text
+        if not gobackwards:
+            originalindex = self.helper[self.state][0]
+            success = False
+            i = originalindex+1
+            while i < len(self.helper[self.state][1]):
+                if text in self.helper[self.state][1][i]:
+                    self.helper[self.state][0] = i        
+                    success = True
+                    break
+                i += 1
+            if success:
+                self.sethelperlines( self.state )
+                self.setalert("Text found in help." )
+            else:
+                i = 0
+                while i <= originalindex:
+                    if text in self.helper[self.state][1][i]:
+                        self.helper[self.state][0] = i        
+                        success = True
+                        break
+                    i += 1
+                if success:
+                    self.sethelperlines( self.state )
+                    self.setalert("Wrapped and found text in help.")
+                else:
+                    self.setalert("Text not found in help.")
+        else:
+            # going backwards
+            originalindex = self.helper[self.state][0]
+            success = False
+            i = originalindex-1
+            while i >= 0:
+                if text in self.helper[self.state][1][i]:
+                    self.helper[self.state][0] = i        
+                    success = True
+                    break
+                i -= 1
+            if success:
+                self.sethelperlines( self.state )
+                self.setalert("Text found in help." )
+            else:
+                i = len(self.helper[self.state][1])-1
+                while i > originalindex:
+                    if text in self.helper[self.state][1][i]:
+                        self.helper[self.state][0] = i        
+                        success = True
+                        break
+                    i -= 1
+                if success:
+                    self.sethelperlines( self.state )
+                    self.setalert("Wrapped and found text in help.")
+                else:
+                    self.setalert("Text not found in help.")
     
     def addmidinote( self, note ):
         if note.velocity:
@@ -1214,35 +1312,6 @@ class EditClass( DDRClass ): # inherit from the DDRClass
         else:
             self.setalert("No notes to carve here.")
 
-    def mergeregion( self, tickrange, midirange=-1 ):
-        result = 1
-        if midirange == -1:
-            midirange = [0, 127]
-        selectednotes, selectedmidinotes = self.piece.selectnotes(
-            tickrange, midirange, self.currenttrack
-        )
-        self.piece.deletenotes( selectednotes )
-        i = 0
-        while i < len(selectednotes):
-            notei = selectednotes[i]
-            #imerged.append(False)
-            j = i + 1 #len(selectedmidinotes) - 1
-            while j < len(selectednotes):
-                notej = selectednotes[j]
-                if notej[0] == notei[0]: # pitch is the same
-                    # modify duration of note i:
-                    # duration of note j (notej[3]) plus difference in ticks from i to j:
-                    notei[3] = notej[3] + (notej[2] - notei[2]) 
-                    del selectednotes[j]
-                    result = 0
-                    # would like to "break" here but cannot.  must look at all possible futures.
-                else: 
-                    j += 1
-            i += 1
-        for note in selectednotes:
-            self.piece.addnote( note[0],note[1],note[2],note[3], self.currenttrack )
-        return result
-
     def mergecursorselection( self, aggressive=False ):
         # quick delete
         tickmin,tickmax, midimin, midimax = self.selectcursorselection()
@@ -1250,11 +1319,9 @@ class EditClass( DDRClass ): # inherit from the DDRClass
         self.piece.deletenotes( self.selectednotes, self.currenttrack )
         
         i = 0
-        #imerged = []     # whether note at i merged or not.
         while i < len(self.selectednotes):
             notei = self.selectednotes[i]
-            #imerged.append(False)
-            j = i + 1 #len(self.selectedmidinotes) - 1
+            j = i + 1 
             while j < len(self.selectednotes):
                 notej = self.selectednotes[j]
                 if notej[0] == notei[0]: # pitch is the same
@@ -1263,7 +1330,6 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                     notei[3] = notej[3] + (notej[2] - notei[2]) 
                     del self.selectednotes[j]
                     # would like to "break" here but cannot.  must look at all possible futures.
-                    #imerged[i] = True
                 else: 
                     j += 1
             i += 1
@@ -1275,11 +1341,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                     self.piece.addnote( note[0],note[1],note[2],note[3], self.currenttrack )
             else:
                 alerttxt = "Attempted a merge with every note in "
-                for i in range(len(self.selectednotes)):
-                    note = self.selectednotes[i]
-                    #if imerged[i]:
-                    #   self.piece.addnote( note[0],note[1],note[2],note[3], self.currenttrack )
-                    #else:
+                for note in self.selectednotes:
                     midinote = MIDI.NoteOnEvent( pitch=note[0], velocity=note[1] )
                     midinote.absoluteticks = note[2]
                     # keep the on note for sure:
@@ -1334,24 +1396,47 @@ class EditClass( DDRClass ): # inherit from the DDRClass
         # quick delete
         tickmin,tickmax, midimin, midimax = self.selectcursorselection()
         # we have a selection going...
-        #self.piece.deletenotes( self.selectednotes, self.currenttrack )
-        
+        self.piece.deletenotes( self.selectednotes, self.currenttrack )
+        extension = 0.5*(aggressive+1)*self.currentnoteticks
+        i = 0
+        while i < len(self.selectednotes):
+            notei = self.selectednotes[i]
+            j = i + 1 
+            while j < len(self.selectednotes):
+                notej = self.selectednotes[j]
+                if ( notej[0] == notei[0]   # same pitch
+                and notej[2] - config.EDITnotespace <= notei[2] + notei[3] + extension ):
+                    # pitch is the same and notej got bumped into by notei
+                    # so extend notei up into notej
+                    notei[3] = notej[3] + (notej[2] - notei[2])  # don't add extension yet.
+                    # and note j got killed by note i:
+                    del self.selectednotes[j]
+                    # would like to "break" here but cannot.  must look at all possible futures.
+                else: 
+                    j += 1
+            i += 1
+
+
         if self.selectednotes:
-            for originalnote in self.selectednotes:
-                note = [ originalnote[0], originalnote[1], originalnote[2], 
-                    originalnote[3] + 0.5*(aggressive+1)*self.currentnoteticks
-                ]
-                if self.mergeregion( 
-                    [note[2], note[2]+note[3]+config.EDITnotespace],
-                    [note[0]]
-                ):  
-                    # we did not find something to merge
-                    self.piece.deletenotes( [ originalnote ], self.currenttrack ) 
-                    self.piece.addnote( note[0],note[1],note[2],note[3], self.currenttrack )
+            for note in self.selectednotes:
+                # keep the on note for sure:
+                midinote = MIDI.NoteOnEvent( pitch=note[0], velocity=note[1] )
+                midinote.absoluteticks = note[2]
+                self.addmidinote( midinote )
+                # try to delete any subsequent on notes which would interfere with
+                # this notes extension:
+                if self.piece.deleteonnote( note[0], [note[2], note[3]+extension], 
+                    self.currenttrack ):
+                    # there were no other on notes in the region.  so we need to add an off note.
+                    midinote = MIDI.NoteOffEvent( pitch=note[0] )
+                    midinote.absoluteticks = note[2]+note[3]+extension
+                    self.addmidinote( midinote )
+
             if aggressive:
                 alerttxt="Really extended notes in "
             else:
                 alerttxt="Extended notes in "
+
             self.setcurrentticksandload( self.currentabsoluteticks )
             if midimax-midimin >= 127:
                 self.setalert( alerttxt+str(int(round(1.0*(tickmax-tickmin)/self.currentnoteticks)))+" rows")

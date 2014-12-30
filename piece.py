@@ -648,6 +648,18 @@ class PieceClass:
                 return 0
             ti += 1
         return 1
+    
+    def deleteonnote( self, pitch, tickrange, track=0 ):
+        ti = 0 # track note index
+        while ti < len( self.notes[track] ): 
+            tracknote = self.notes[track][ti]
+            if ( tracknote.name == "Note On" 
+            and tickrange[0] < tracknote.absoluteticks <= tickrange[-1]
+            and tracknote.pitch == pitch ):
+                del self.notes[track][ti]
+                return 0
+            ti += 1
+        return 1
 
     def gettimesignatureevents( self ): 
         ''' this should be called immediately after getnoteevents''' 
