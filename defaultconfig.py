@@ -117,8 +117,7 @@ EDITresolution = 5040   # (1 * 2 * 3 * 2 * 5 * 7 * 2 * 3 * 2 * 2 * 2)/4
                         # thirty-secondth     630
                         # sixty-fourth        315
                         # and many others in between.
-#
-EDITstaccato = 0.5 # fraction of time duration that stacatto notes get based on the current note duration
+EDITshortestnote = 315  # shortest note you want to allow, in ticks.
 EDITnotespace = 20 # # of ticks to give white-space letting a note go and hitting the next
 
 # GAME relevant variables

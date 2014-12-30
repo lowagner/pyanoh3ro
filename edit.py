@@ -388,6 +388,12 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                 # paste
                 self.pastenoteclipboard( pygame.key.get_mods() & pygame.KMOD_SHIFT,
                     pygame.key.get_mods() & pygame.KMOD_CTRL )
+            
+            elif event.key == pygame.K_s:
+                self.shortencursorselection( pygame.key.get_mods() & pygame.KMOD_SHIFT )
+            
+            elif event.key == pygame.K_e:
+                self.extendcursorselection( pygame.key.get_mods() & pygame.KMOD_SHIFT )
 
             elif event.key == pygame.K_LEFTBRACKET:
                 # lower volume of notes under cursor
@@ -1208,6 +1214,35 @@ class EditClass( DDRClass ): # inherit from the DDRClass
         else:
             self.setalert("No notes to carve here.")
 
+    def mergeregion( self, tickrange, midirange=-1 ):
+        result = 1
+        if midirange == -1:
+            midirange = [0, 127]
+        selectednotes, selectedmidinotes = self.piece.selectnotes(
+            tickrange, midirange, self.currenttrack
+        )
+        self.piece.deletenotes( selectednotes )
+        i = 0
+        while i < len(selectednotes):
+            notei = selectednotes[i]
+            #imerged.append(False)
+            j = i + 1 #len(selectedmidinotes) - 1
+            while j < len(selectednotes):
+                notej = selectednotes[j]
+                if notej[0] == notei[0]: # pitch is the same
+                    # modify duration of note i:
+                    # duration of note j (notej[3]) plus difference in ticks from i to j:
+                    notei[3] = notej[3] + (notej[2] - notei[2]) 
+                    del selectednotes[j]
+                    result = 0
+                    # would like to "break" here but cannot.  must look at all possible futures.
+                else: 
+                    j += 1
+            i += 1
+        for note in selectednotes:
+            self.piece.addnote( note[0],note[1],note[2],note[3], self.currenttrack )
+        return result
+
     def mergecursorselection( self, aggressive=False ):
         # quick delete
         tickmin,tickmax, midimin, midimax = self.selectcursorselection()
@@ -1265,6 +1300,66 @@ class EditClass( DDRClass ): # inherit from the DDRClass
             self.anchor = 0
         else:
             self.setalert("No notes to merge here.")
+    
+    def shortencursorselection( self, aggressive=False ):
+        # quick delete
+        tickmin,tickmax, midimin, midimax = self.selectcursorselection()
+        # we have a selection going...
+        self.piece.deletenotes( self.selectednotes, self.currenttrack )
+        
+        if self.selectednotes:
+            for note in self.selectednotes:
+                note[3] += config.EDITnotespace
+                note[3] *= 0.5**(aggressive+1)
+                if note[3] <= config.EDITshortestnote:
+                    note[3] = config.EDITshortestnote
+                note[3] -= config.EDITnotespace
+                self.piece.addnote( note[0],note[1],note[2],note[3], self.currenttrack )
+            
+            if aggressive:
+                alerttxt = "Really shortened notes in "
+            else:
+                alerttxt = "Shortened notes in "
+
+            self.setcurrentticksandload( self.currentabsoluteticks )
+            if midimax-midimin >= 127:
+                self.setalert( alerttxt+str(int(round(1.0*(tickmax-tickmin)/self.currentnoteticks)))+" rows")
+            else:
+                self.setalert( alerttxt+str(int(round(1.0*(tickmax-tickmin)/self.currentnoteticks)))+" rows, "+
+                str(midimax-midimin+1)+" columns")
+        else:
+            self.setalert("No notes to shorten here.")
+    
+    def extendcursorselection( self, aggressive=False ):
+        # quick delete
+        tickmin,tickmax, midimin, midimax = self.selectcursorselection()
+        # we have a selection going...
+        #self.piece.deletenotes( self.selectednotes, self.currenttrack )
+        
+        if self.selectednotes:
+            for originalnote in self.selectednotes:
+                note = [ originalnote[0], originalnote[1], originalnote[2], 
+                    originalnote[3] + 0.5*(aggressive+1)*self.currentnoteticks
+                ]
+                if self.mergeregion( 
+                    [note[2], note[2]+note[3]+config.EDITnotespace],
+                    [note[0]]
+                ):  
+                    # we did not find something to merge
+                    self.piece.deletenotes( [ originalnote ], self.currenttrack ) 
+                    self.piece.addnote( note[0],note[1],note[2],note[3], self.currenttrack )
+            if aggressive:
+                alerttxt="Really extended notes in "
+            else:
+                alerttxt="Extended notes in "
+            self.setcurrentticksandload( self.currentabsoluteticks )
+            if midimax-midimin >= 127:
+                self.setalert( alerttxt+str(int(round(1.0*(tickmax-tickmin)/self.currentnoteticks)))+" rows")
+            else:
+                self.setalert( alerttxt+str(int(round(1.0*(tickmax-tickmin)/self.currentnoteticks)))+" rows, "+
+                str(midimax-midimin+1)+" columns")
+        else:
+            self.setalert("No notes to extend here.")
     
     def copyselectednotes( self ):
         self.noteclipboard = [] #self.piece.selectednotes[:]

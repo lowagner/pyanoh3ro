@@ -55,23 +55,6 @@ finished playing a note on their midi instrument.
 ================================================
 roughly in order of when i'm interested in doing them
 
-## elongate/extend
-
-e:  extend note by 0.5*self.currentnoteticks
-E:  extend note by 1*self.currentnoteticks
-
-
-## toggle staccato (s):
-
-reduce note duration by some config fraction (config.EDITstacatto)
-or bring it back to full
-
-
-## shorten note (S)
-
-reduce note duration by 50%
-
-
 ## reverse
 
 r:  reverse note selection (in time)
