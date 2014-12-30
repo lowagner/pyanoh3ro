@@ -258,6 +258,8 @@ class TextEntryClass:
 
         self.fontsize *= config.FONTSIZEmultiplier
         self.valuefontsize *= config.FONTSIZEmultiplier
+        self.fontsize = int(self.fontsize)
+        self.valuefontsize = int(self.valuefontsize)
         
         ## set some post-defaults
         if self.height == 0:

@@ -876,7 +876,7 @@ class DDRClass( GameChunkClass ):
     def setalert( self, string, time = 5000 ):
         self.alerttext = string
         self.alerttimer = time
-        fontandsize = pygame.font.SysFont(config.FONT, 20*config.FONTSIZEmultiplier )
+        fontandsize = pygame.font.SysFont(config.FONT, int(20*config.FONTSIZEmultiplier) )
         self.alert = fontandsize.render( self.alerttext, 1, (255,255,255) )
         self.alertbox = self.alert.get_rect()
 
@@ -921,7 +921,7 @@ class FlyingText( FlyingMusicElement ):
     def __init__( self, reltickpixels, text, fontsize=20 ):
         self.font = 'monospace'
         self.fontcolor = (250,210,250)
-        self.fontsize = fontsize * config.FONTSIZEmultiplier
+        self.fontsize = int(fontsize * config.FONTSIZEmultiplier)
         self.text = str(text)
         self.reltickpixels = reltickpixels
         self.fractionx = 0.4

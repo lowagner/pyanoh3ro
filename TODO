@@ -1,6 +1,11 @@
 # KNOWN ISSUES
 ================================================
 
+## annotations
+
+annotations don't save after absticks=0.
+
+
 ## changing instrument on one song affects other songs using defaults
 
 editing one song, changing its instrument, and going over to

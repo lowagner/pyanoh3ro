@@ -37,10 +37,10 @@ class EditClass( DDRClass ): # inherit from the DDRClass
         self.commandlistindex = -1
         self.commandfont = config.FONT
         self.commandfontcolor = (255,255,255)
-        self.commandfontsize = 24 * config.FONTSIZEmultiplier
+        self.commandfontsize = int(24*config.FONTSIZEmultiplier)
         self.commandbackcolor = (0, 0, 0)
         self.helperfontcolor = (255,255,255)
-        self.helperfontsize = 18* config.FONTSIZEmultiplier
+        self.helperfontsize = int(18*config.FONTSIZEmultiplier)
         self.helperbackcolor = (0, 0, 0)
         self.statenames = { self.NAVIGATIONstate : "Navigation",
                             self.SELECTstate : "Select",
