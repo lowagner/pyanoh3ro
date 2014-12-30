@@ -18,7 +18,7 @@ def lcm(a, b):
     return a * b // gcd(a, b)
 
 def getpiecesettings( piecedir ):
-    settings = {}
+    settings = {} #
     try:
         piecesettingsfile = os.path.join( piecedir, "info.pkl" )
         with open(piecesettingsfile, 'rb') as handle:
@@ -31,7 +31,13 @@ def getpiecesettings( piecedir ):
     descendingdirectorycontents = os.walk(piecedir).next()[2] # 2 = files only, not directories
     difficulties = []
     for f in descendingdirectorycontents:
-        difficulties.append( f[-5] )
+        if f[-4:] == ".mid":
+            difficulties.append( f[-5] )
+    
+    if not "BookmarkTicks" in settings:
+        settings["BookmarkTicks"] = [] 
+    if not "Metronome" in settings:
+        settings["Metronome"] = config.METRONOMEdefault
 
     settings["AllowedDifficulties"] = difficulties
 
@@ -57,8 +63,10 @@ class PieceClass:
         #print "Opening piece ", piecedir
         self.settings = piecesettings # these are mostly ignored in the Edit class, but
                                       # are very important for the play class.
+        print "piece settings = ", piecesettings
         self.allowedsettings = [ "Name", "Difficulty", "AllowedDifficulties",
-                                 "PlayerStarts", "PlayerTrack" ]
+                                 "PlayerStarts", "PlayerTrack", "BookmarkTicks",
+                                 "Metronome", "Sandbox" ]
 
         split = os.path.split( piecedir ) # splits path into a base and the last directory
         self.settings["Name"] = split[-1] #  the last directory is the name of the piece

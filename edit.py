@@ -10,12 +10,14 @@ import itertools
 
 class EditClass( DDRClass ): # inherit from the DDRClass
 #### EDIT CLASS
-    def __init__( self, piecedir, midi, piecesettings = { "TempoPercent" : 100, "Difficulty" : 0,
-                                                    "AllowedDifficulties" : [ 0 ],
-                                                    "Sandbox" : config.SANDBOXplay,
-                                                    "PlayerStarts" : config.PLAYERstarts,
-                                                    "PlayerTrack" : 0,
-                                                    "Metronome" : config.METRONOMEdefault } ):
+    def __init__( self, piecedir, midi, piecesettings = { 
+            "TempoPercent" : 100, "Difficulty" : 0,
+            "BookmarkTicks" : [],
+            "AllowedDifficulties" : [ 0 ],
+            "Sandbox" : config.SANDBOXplay,
+            "PlayerStarts" : config.PLAYERstarts,
+            "PlayerTrack" : 0,
+            "Metronome" : config.METRONOMEdefault } ):
         DDRClass.__init__( self, piecedir, midi, piecesettings )
         self.noteson = {} # notes on that we will eventually turn off.
         self.sandbox = 1 # no matter what, in EDIT mode you should allow sandbox maneuvering
@@ -557,6 +559,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                         midi.clearall()
                         self.__init__( self.piece.piecedir, midi )
                     elif self.command == "save" or self.command == "s" or self.command == "w":
+                        self.piece.settings["BookmarkTicks"] = self.bookmarkticks
                         self.piece.writeinfo()
                         self.piece.writemidi()
                         self.wrapupcommand( self.piece.piecedir+" saved!" )
@@ -1342,9 +1345,11 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                 for note in self.noteclipboard:
                     absnote = [ note[0]+midinote, note[1], 
                                 note[2]+currentticks, note[3] ]
-                    # carve out where we add the note
-                    self.piece.carveoutregion( [ absnote[2], absnote[2]+note[3]+config.EDITnotespace ],
-                                               [ absnote[0] ], self.currenttrack )
+                    # carve out where we add the note, but add a little space for the duration:
+                    self.piece.carveoutregion( 
+                        [ absnote[2], absnote[2]+note[3]+config.EDITnotespace ],
+                        [ absnote[0] ], self.currenttrack 
+                    )
                     self.piece.addnote( absnote[0], absnote[1], absnote[2],
                                         absnote[3], self.currenttrack )
 

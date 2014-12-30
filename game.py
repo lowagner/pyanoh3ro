@@ -60,6 +60,7 @@ class GameClass:
                                       "Difficulty",  # integer 
                                       "PlayerTrack",
                                       "Metronome",
+                                      "BookmarkTicks",
                                       "Sandbox" ]    # if true, then not penalized for missing notes
 
         ## ACTUALIZE THE GAMESTATE
@@ -242,12 +243,6 @@ class GameClass:
 
             elif self.gamestate == config.GAMESTATEeditmenu: #  compose menu
                 self.piecesettings = {}
-                self.piecesettings["TempoPercent"] = 100
-                self.piecesettings["Difficulty"] = config.DEFAULTdifficulty
-                self.piecesettings["PlayerTrack"] = config.DEFAULTplayertrack
-                self.piecesettings["Sandbox"] = config.SANDBOXplay 
-                self.piecesettings["Metronome"] = config.METRONOMEdefault
-
                 self.gamechunk = DirectoryMenuClass( [ TextEntryClass( text="Compose Menu",
                                                               selectable=False,
                                                               fontsize=25 ) ], 
@@ -277,7 +272,7 @@ class GameClass:
                 else:
                     print "Opening",self.piecedir, "for editting"
 
-
+                self.piecesettings = getpiecesettings( self.piecedir )
                 self.gamechunk = EditClass( self.piecedir, self.midi, self.piecesettings )
 
             elif self.gamestate == config.GAMESTATEpiecesettings: #  piece settings menu
@@ -286,6 +281,7 @@ class GameClass:
                 # 
                 self.piecesettings = getpiecesettings( self.piecedir )
                 self.piecesettings["Metronome"] = config.METRONOMEdefault
+                print "piece settings = ", self.piecesettings
                 
                 piecemenu = [ TextEntryClass( text="Piece Settings",
                                               selectable=False,

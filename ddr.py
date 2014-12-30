@@ -42,6 +42,7 @@ def divisors(n):
 class DDRClass( GameChunkClass ):
     def __init__( self, piecedir, midi, 
                     piecesettings = { 
+                        "BookmarkTicks" : [],
                         "TempoPercent" : 100, "Difficulty" : 0,
                         "Sandbox" : config.SANDBOXplay,
                         "PlayerStarts" : config.PLAYERstarts,
@@ -71,7 +72,7 @@ class DDRClass( GameChunkClass ):
         self.tempomultiplier = 1.0*piecesettings["TempoPercent"]/100
         self.sandbox = piecesettings["Sandbox"]
         self.noisytracks = set(range( self.piece.numberoftracks ))
-        self.bookmarkticks = []
+        self.bookmarkticks = self.piece.settings["BookmarkTicks"]
 
 
         # next we setup the time grid, with allowed durations.

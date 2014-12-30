@@ -1,11 +1,6 @@
 # KNOWN ISSUES
 ================================================
 
-## choosing difficulty in play mode is wonky
-
-Need to grab only midi files from piece directory.
-
-
 ## changing instrument on one song affects other songs using defaults
 
 editing one song, changing its instrument, and going over to
@@ -22,6 +17,10 @@ can do a little weird things with how the measure ticks
 are displayed (and subdivisions).
 
 
+
+# KNOWN ISSUES WHICH ARE PROBABLY FIXED
+================================================
+
 ## copy/pasting
 
 bug in deleting, sometimes note off/on gets left behind,
@@ -30,9 +29,18 @@ your song will soon meet its doom, don't attempt to save (?).
 sorry if this ruins your groovin'.  let me know how to replicate.
 
 UPDATE:
-    I think this is fixed.  keeping this around just in case.
-    needed to "carveoutregion" with a little extra EDITnotespace
-    when adding notes without violent paste.
+I think this is fixed.  
+needed to "carveoutregion" with a little extra EDITnotespace
+when adding notes without violent paste.
+
+
+## choosing difficulty in play mode is wonky
+
+Need to grab only midi files from piece directory.
+
+UPDATE:
+also probably fixed.  in 'getpiecesettings', needed to look for .mid files only.
+
 
 
 # POSSIBLE BUGS (NEED INVESTIGATION)
