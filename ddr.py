@@ -435,22 +435,16 @@ class DDRClass( GameChunkClass ):
         # now get tempo events
         events = self.piece.gettempoevents()
         for event in events:
-            # we just got a time-signature event, so clear everything after that point
+            # we just got a tempo event
             self.keymusic.addtempo( (event.absoluteticks-self.currentabsoluteticks) *
                                     self.pixelspertick, self.tempomultiplier*event.bpm )
 
         # now get any text events
         events = self.piece.gettextevents( self.currenttrack )
         for event in events:
-            # we just got a time-signature event, so clear everything after that point
+            # we just got a text event
             self.keymusic.addtext( (event.absoluteticks-self.currentabsoluteticks) *
                                                   self.pixelspertick, event.text )
-
-        #self.backdrop.addmeasurebar( self.lastloadedmeasureticks )
-        
-        # keep track of when we last loaded.
-        #self.lastload = self.currentabsoluteticks
-        #self.tickrange = self.lastloadedtimesignature * self.resolution
 
     def scoochforward( self, bigscooch = False ):
         if bigscooch:
@@ -680,7 +674,7 @@ class DDRClass( GameChunkClass ):
                         self.setalert("Bookmark removed.")
                     except ValueError:
                         self.bookmarkticks.append(self.currentabsoluteticks)
-                        self.setalert("Bookmark added.  (Use B to jump between bookmarks.)")
+                        self.setalert("Bookmark added.  (Use b|B to jump between bookmarks.)")
 
                 elif len(self.bookmarkticks) == 0:
                     self.setalert("No bookmarks.  Add one with ctrl+b")
@@ -891,7 +885,7 @@ class FlyingText( FlyingMusicElement ):
         self.fontsize = fontsize * config.FONTSIZEmultiplier
         self.text = str(text)
         self.reltickpixels = reltickpixels
-        self.fractionx = 0.5
+        self.fractionx = 0.4
         
         fontandsize = pygame.font.SysFont( self.font, self.fontsize)
         self.label = fontandsize.render( self.text, 1, self.fontcolor )
@@ -901,7 +895,7 @@ class FlyingText( FlyingMusicElement ):
         y = topofkeys - self.reltickpixels
         if y > 0:
             self.labelbox.bottom = y
-            self.labelbox.centerx = (screen.get_width())*self.fractionx
+            self.labelbox.right = (screen.get_width())*self.fractionx
             screen.blit( self.label, self.labelbox )
 
     def displace( self, displacement ):

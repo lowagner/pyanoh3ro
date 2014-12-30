@@ -16,6 +16,12 @@ you can work around this by setting "i piano" on the command line,
 or whatever instrument you like, for your song.
 
 
+## switching time signatures
+
+can do a little weird things with how the measure ticks
+are displayed (and subdivisions).
+
+
 ## copy/pasting
 
 bug in deleting, sometimes note off/on gets left behind,
@@ -23,11 +29,10 @@ and a weird gray note stretches up across the screen.
 your song will soon meet its doom, don't attempt to save (?).
 sorry if this ruins your groovin'.  let me know how to replicate.
 
-
-## switching time signatures
-
-can do a little weird things with how the measure ticks
-are displayed (and subdivisions).
+UPDATE:
+    I think this is fixed.  keeping this around just in case.
+    needed to "carveoutregion" with a little extra EDITnotespace
+    when adding notes without violent paste.
 
 
 # POSSIBLE BUGS (NEED INVESTIGATION)

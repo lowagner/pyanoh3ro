@@ -669,6 +669,46 @@ class PieceClass:
 
         return self.texts[trackindex][startindex:self.currenttextsindex[trackindex]]
         
+    def addremovetextevent( self, text, absoluteticks=0, trackindex=0 ):
+        ''' returns 1 if adding a text event (len(text)>0), 
+        -1 if removing a text event (len(text)==0),
+        and 0 if nothing happened (len(text)==0 and no matching text with absoluteticks) '''
+        if absoluteticks == 0:
+            # set the trackname if we're at the beginning of the piece
+            self.texts[trackindex][0].text = text
+            if len(text):
+                return 1
+            else:
+                return -1
+        elif len(text):
+            # adding process
+            miditext = MIDI.TextMetaEvent(text=text)
+            miditext.absoluteticks = absoluteticks
+
+            if absoluteticks > self.texts[trackindex][-1].absoluteticks:
+                self.texts[trackindex].append( miditext ) 
+                return 1
+            else:
+                i = 0
+                while i < len(self.texts[trackindex]):
+                    if absoluteticks < self.texts[trackindex][i].absoluteticks:
+                        self.texts[trackindex].insert(i, miditext)
+                        return 1
+                    elif absoluteticks == self.texts[trackindex][i].absoluteticks:
+                        self.texts[trackindex][i] = miditext
+                        return 1
+                    else:
+                        i += 1
+        else:
+            # removal process
+            i = 0
+            while i < len(self.texts[trackindex]):
+                if absoluteticks == self.texts[trackindex][i].absoluteticks:
+                    del self.texts[trackindex][i]
+                    return -1
+                else:
+                    i += 1
+        return 0
 
 ##  PIECE CLASS
 
