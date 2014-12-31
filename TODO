@@ -1,6 +1,11 @@
 # KNOWN ISSUES
 ================================================
 
+## setalert doesn't show for small screens
+
+make setalert draw after helper box, add box border behind it.
+
+
 ## annotations
 
 annotations don't save after absticks=0.
