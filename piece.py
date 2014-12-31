@@ -63,7 +63,7 @@ class PieceClass:
         #print "Opening piece ", piecedir
         self.settings = piecesettings # these are mostly ignored in the Edit class, but
                                       # are very important for the play class.
-        print "piece settings = ", piecesettings
+        #print "piece settings = ", piecesettings
         self.allowedsettings = [ "Name", "Difficulty", "AllowedDifficulties",
                                  "PlayerStarts", "PlayerTrack", "BookmarkTicks",
                                  "Metronome", "Sandbox" ]
@@ -116,7 +116,7 @@ class PieceClass:
                 self.texts.append( [ trackname ] ) # default track name is nothing
                 del trackname
                 print "Track", i
-                print readpattern[i]
+                #print readpattern[i]
                 for event in readpattern[i]:
                     event.tick *= resolutionmultiplier 
                     absoluteticks += event.tick # convert relative time to absolute time
@@ -776,8 +776,8 @@ class PieceClass:
         tracks[0] += self.texts[0][1:] + self.tempos+self.timesignatures+self.notes[0]
         # sort everything
         tracks[0].sort(key=operator.attrgetter('absoluteticks'))
-        print "saving track0"
-        print tracks[0]
+#        print "saving track0"
+#        print tracks[0]
 
         # then grab the instrument
         if self.channels[0] != 9 and self.instruments[0]:
