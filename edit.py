@@ -7,6 +7,8 @@ import midi as MIDI # from python-midi vishnubob github, for easy reading/writin
 import config
 from collections import deque # this is for fast popping of lists from the left
 import itertools
+import mingus.core.chords as CHORDS
+import mingus.core.notes as NOTES
 
 class EditClass( DDRClass ): # inherit from the DDRClass
 #### EDIT CLASS
@@ -400,7 +402,12 @@ class EditClass( DDRClass ): # inherit from the DDRClass
             elif event.key == pygame.K_q:
                 # quick insert.  add note at cursor
                 if self.anchor:
-                    self.setalert("Stay tuned for chord/arpeggio input") 
+                    self.setalert("Choose shorthand chord") 
+                    self.listeningfortext = True
+                    self.askingfor = "quick chord"
+                    self.listeningmessage = ""
+                    self.listeningindex = -1
+                    self.listeningact = self.addquickchordinselection
                 else:
                     self.addnoteatcursor( midi )
                     if pygame.key.get_mods() & pygame.KMOD_SHIFT:
@@ -454,11 +461,11 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                         if switch[0] == -1:
                             # if anchor was holding the entire row...
                             # keep the cursor where it is:
-                            switch[0] = self.keymusic.cursorkeyindex + 9   
+                            switch[0] = self.keymusic.cursorkeyindex + config.LOWESTnote   
                             # make sure that it will now, too:
                             self.anchor = [ -1, currentticks ]
                         else:
-                            self.anchor = [ self.keymusic.cursorkeyindex + 9, 
+                            self.anchor = [ self.keymusic.cursorkeyindex + config.LOWESTnote, 
                                             currentticks ]
                         self.keymusic.centeredmidinote = switch[0]
                         self.setcurrentticksandload( switch[1] )
@@ -477,7 +484,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                     midinote = -1
                     if not (pygame.key.get_mods() & pygame.KMOD_SHIFT):
                         # if the shift key is not on, pick the note specifically
-                        midinote = self.keymusic.cursorkeyindex + 9   
+                        midinote = self.keymusic.cursorkeyindex + config.LOWESTnote   
                     
                     self.anchor = [ midinote, currentticks ]
             
@@ -514,7 +521,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                         self.anchor = [ originalanchor0, self.anchor[1] ]
                 else:
                     # no notes were selected
-                    self.keymusic.hitkey( midi, self.keymusic.cursorkeyindex + 9,
+                    self.keymusic.hitkey( midi, self.keymusic.cursorkeyindex + config.LOWESTnote,
                         100,    # velocity
                         1,      # duration
                         self.piece.channels[self.currenttrack], 
@@ -525,7 +532,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
             and (event.key == pygame.K_h or event.key == pygame.K_l ) ):
                 if self.anchor and self.anchor[0] != -1:
                     swap0 = self.anchor[0]
-                    self.anchor[0] = self.keymusic.cursorkeyindex + 9
+                    self.anchor[0] = self.keymusic.cursorkeyindex + config.LOWESTnote
                     self.keymusic.centeredmidinote = swap0
                     if config.SMALLalerts:
                         self.setalert("Swapping cursor/visual anchor key")
@@ -1094,7 +1101,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
         newnote.absoluteticks = note.absoluteticks 
         self.piece.addmidinote( newnote, self.currenttrack )
 
-    def addnote( self, midi, midinote, velocity, absticks, duration, playsound=True ):
+    def addnote( self, midinote, velocity, absticks, duration ):
         # abs ticks is the start of the note, duration is how long it is.
 
         # first delete any notes that are in this vicinity
@@ -1106,8 +1113,12 @@ class EditClass( DDRClass ): # inherit from the DDRClass
         self.piece.deletenotes( selected, self.currenttrack )
 
         # then add the note 
-        # THIS CAUSES THE GHOST DELAY:
         self.piece.addnote( midinote, velocity, absticks, duration, self.currenttrack )
+
+    def addsnote( self, midi, midinote, velocity, absticks, duration, playsound=True ):
+        ''' add sounded note '''
+        self.addnote( midinote, velocity, absticks, duration )
+
         # and hit a key
         self.keymusic.hitkey( midi, midinote, velocity, self.tickstosecs( duration ),
                               self.piece.channels[self.currenttrack], playsound )
@@ -1128,7 +1139,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
 
     def addnotepresently( self, midi, midinote, velocity=100, playsound=True ):
         # add note at current absolute ticks, with duration currentnoteticks
-        self.addnote( midi, midinote, velocity, 
+        self.addsnote( midi, midinote, velocity, 
                       self.roundtonoteticks( self.currentabsoluteticks ), 
                       self.currentnoteticks-1, playsound )
     
@@ -1149,7 +1160,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                                 ( self.roundtonoteticks( self.currentabsoluteticks ) 
                                  -note[1] + offset )   ) - config.EDITnotespace
             # args:  midi, midinote, velocity, absticks, duration, playsound=True
-            self.addnote( midi, midinote, note[0], note[1], notelength, False )
+            self.addsnote( midi, midinote, note[0], note[1], notelength, False )
             
             del self.noteson[ midinote ]
 
@@ -1157,7 +1168,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
             pass
 
     def addnoteatcursor( self, midi ):
-        self.addnotepresently( midi, self.keymusic.cursorkeyindex + 9, 
+        self.addnotepresently( midi, self.keymusic.cursorkeyindex + config.LOWESTnote, 
                                self.currentvelocity, True ) # play sound
    
 #### EDIT CLASS 
@@ -1196,29 +1207,63 @@ class EditClass( DDRClass ): # inherit from the DDRClass
             tickrange, midirange, self.currenttrack 
         )
 
-    def selectcursorselection( self ):
+    def getselectionregion( self ):
+        currentticks = self.roundtonoteticks( self.currentabsoluteticks )
         if self.anchor:
-            self.previousdeltaregion = []
-            if self.currentabsoluteticks >= self.anchor[1]:
+            if currentticks >= self.anchor[1]:
                 # we are ahead of the anchor
                 tickmin = self.anchor[1]
-                tickmax = self.currentabsoluteticks + self.currentnoteticks
-                self.previousdeltaregion.append(self.anchor[1] - self.currentabsoluteticks)
+                tickmax = currentticks + self.currentnoteticks
+            else:
+                # the anchor is ahead of us
+                tickmin = currentticks
+                tickmax = self.anchor[1] + self.currentnoteticks
+
+            if self.anchor[0] == -1:
+                midimin = config.LOWESTnote
+                midimax = config.HIGHESTnote
+            else:
+                cursormidi = self.keymusic.cursorkeyindex + config.LOWESTnote
+                if cursormidi > self.anchor[0]:
+                    # we are right of the anchor
+                    midimax = cursormidi
+                    midimin = self.anchor[0]
+                else:
+                    # we are left of the anchor
+                    midimax = self.anchor[0]
+                    midimin = cursormidi
+        else:
+            tickmin = currentticks
+            tickmax = tickmin + self.currentnoteticks
+            midimin = self.keymusic.cursorkeyindex + config.LOWESTnote
+            midimax = midimin
+
+        return tickmin, tickmax, midimin, midimax
+
+    def selectcursorselection( self ):
+        currentticks = self.roundtonoteticks( self.currentabsoluteticks )
+        if self.anchor:
+            self.previousdeltaregion = []
+            if currentticks >= self.anchor[1]:
+                # we are ahead of the anchor
+                tickmin = self.anchor[1]
+                tickmax = currentticks + self.currentnoteticks
+                self.previousdeltaregion.append(self.anchor[1] - currentticks)
                 self.previousdeltaregion.append(self.currentnoteticks)
             else:
                 # the anchor is ahead of us
-                tickmin = self.currentabsoluteticks
+                tickmin = currentticks
                 tickmax = self.anchor[1] + self.currentnoteticks
                 self.previousdeltaregion.append(0)
-                self.previousdeltaregion.append(self.anchor[1] - self.currentabsoluteticks+ self.currentnoteticks)
+                self.previousdeltaregion.append(self.anchor[1] - currentticks+ self.currentnoteticks)
 
             if self.anchor[0] == -1:
-                midimin = 0
-                midimax = 127
+                midimin = config.LOWESTnote
+                midimax = config.HIGHESTnote
                 self.previousdeltaregion.append(-127)
                 self.previousdeltaregion.append(127)
             else:
-                cursormidi = self.keymusic.cursorkeyindex + 9
+                cursormidi = self.keymusic.cursorkeyindex + config.LOWESTnote
                 if cursormidi > self.anchor[0]:
                     # we are right of the anchor
                     midimax = cursormidi
@@ -1232,9 +1277,9 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                     self.previousdeltaregion.append(0)
                     self.previousdeltaregion.append( self.anchor[0] - cursormidi )
         else:
-            tickmin = self.currentabsoluteticks
+            tickmin = currentticks
             tickmax = tickmin + self.currentnoteticks
-            midimin = self.keymusic.cursorkeyindex + 9
+            midimin = self.keymusic.cursorkeyindex + config.LOWESTnote
             midimax = midimin
             self.previousdeltaregion = [ 0, self.currentnoteticks, 0, 0 ]
 
@@ -1278,10 +1323,10 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                 tickmax = self.anchor[1] + self.currentnoteticks
 
             if self.anchor[0] == -1:
-                midimin = 0
-                midimax = 127
+                midimin = config.LOWESTnote
+                midimax = config.HIGHESTnote
             else:
-                cursormidi = self.keymusic.cursorkeyindex + 9
+                cursormidi = self.keymusic.cursorkeyindex + config.LOWESTnote
                 if cursormidi > self.anchor[0]:
                     # we are right of the anchor
                     midimax = cursormidi
@@ -1297,7 +1342,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                 tickmin = self.currentabsoluteticks
             currentticks = tickmin
             tickmax = tickmin + self.currentnoteticks
-            midimin = self.keymusic.cursorkeyindex + 9
+            midimin = self.keymusic.cursorkeyindex + config.LOWESTnote
             midimax = midimin
 
         noteclipboard = self.piece.carveoutregion(     #absolute pitches in this noteclipboard
@@ -1312,7 +1357,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                 alerttxt="Carved notes to clipboard from "
                 self.noteclipboard = []        # relative pitches/ticks in this noteclipboard
                 for note in noteclipboard:
-                    self.noteclipboard.append( [ note[0] - self.keymusic.cursorkeyindex - 9,  #pitch
+                    self.noteclipboard.append( [ note[0] - self.keymusic.cursorkeyindex - config.LOWESTnote,  #pitch
                                               note[1], #velocity
                                               note[2]-currentticks, #absolute ticks
                                               note[3] # duration
@@ -1476,7 +1521,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
     def copyselectednotes( self ):
         self.noteclipboard = [] #self.piece.selectednotes[:]
         for note in self.selectednotes:
-            self.noteclipboard.append( [ note[0] - self.keymusic.cursorkeyindex - 9,  #pitch
+            self.noteclipboard.append( [ note[0] - self.keymusic.cursorkeyindex - config.LOWESTnote,  #pitch
                                          note[1], #velocity
                                          note[2]-self.currentabsoluteticks, #absolute ticks
                                          note[3] # duration
@@ -1499,7 +1544,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
             else:
                 currentticks = self.currentabsoluteticks
 
-            midinote = self.keymusic.cursorkeyindex + 9   
+            midinote = self.keymusic.cursorkeyindex + config.LOWESTnote   
             if violently or copydeleted:
                 # wipe out existing notes in the same area
                 tickrange = [ currentticks + self.previousdeltaregion[0],
@@ -1537,7 +1582,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                     if deadnotes:
                         self.noteclipboard = []
                         for note in deadnotes:
-                            self.noteclipboard.append( [ note[0] - self.keymusic.cursorkeyindex - 9,  #pitch
+                            self.noteclipboard.append( [ note[0] - self.keymusic.cursorkeyindex - config.LOWESTnote,  #pitch
                                                       note[1], #velocity
                                                       note[2]-currentticks, #absolute ticks
                                                       note[3] # duration
@@ -1569,6 +1614,109 @@ class EditClass( DDRClass ): # inherit from the DDRClass
             self.setcurrentticksandload( self.currentabsoluteticks )
         else:
             self.setalert("No notes in clipboard.")
+    
+    def addquickchordinselection( self, text ):
+        colonindex = text.find(";")
+        if colonindex < 0:
+            chordtext = text
+            arptext = ""
+        else:
+            chordtext = text[0:colonindex]
+            arptext = text[colonindex+1:]
+            
+        try:
+            chordlist = CHORDS.from_shorthand(chordtext)
+        except:
+            self.setalert("Unknown chord.")
+            chordlist = []
+            
+        if chordlist:
+            for i in range(len(chordlist)):
+                chordlist[i] = NOTES.note_to_int(chordlist[i])
+            
+            tickmin, tickmax, midimin, midimax = self.getselectionregion()
+            self.addchordinregion( chordlist, [tickmin,tickmax], [midimin,midimax], arptext ) 
+            self.setcurrentticksandload( self.currentabsoluteticks )
+            #self.anchor = 0
+
+    def addchordinregion( self, chordlist, tickrange, midirange, arpeggio="" ):
+        if arpeggio == "":
+            success = False
+            absticks = tickrange[0]
+            while absticks < tickrange[1]:
+                for octave in range(12):
+                    for chordnote in chordlist:
+                        note = chordnote + octave*12
+                        if midirange[0] <= note <= midirange[-1]:
+                            self.addnote( note, self.currentvelocity, absticks, 
+                                self.currentnoteticks - config.EDITnotespace
+                            )
+                            success = True
+
+                absticks += self.currentnoteticks
+
+            if success:
+                self.setalert("Got chord!")
+            else:
+                self.setalert("Chord doesn't fit in region")
+        else:
+            absticks = tickrange[0]
+            firstoctave = 12
+            lastoctave = 0
+            for octave in range(12):
+                for chordnote in chordlist:
+                    note = chordnote + octave*12
+                    if midirange[0] <= note <= midirange[-1]:
+                        if octave < firstoctave:
+                            firstoctave = octave
+                        if octave > lastoctave:
+                            lastoctave = octave
+            if firstoctave <= lastoctave:
+                if arpeggio == "/":
+                    deltaoctave = 1 # move up
+                    resetoctave = firstoctave
+                    initialoctave = firstoctave
+                elif arpeggio == "\\":
+                    deltaoctave = -1 # move down
+                    chordlist.reverse()
+                    resetoctave = lastoctave
+                    initialoctave = lastoctave 
+                elif arpeggio == "/\\":
+                    deltaoctave = 1 # move up initially
+                    resetoctave = None
+                    initialoctave = firstoctave 
+                elif arpeggio == "\\/":
+                    deltaoctave = -1 # move down
+                    chordlist.reverse()
+                    resetoctave = None 
+                    initialoctave = lastoctave 
+                else:
+                    self.setalert("Unknown chord modifier.")
+                    return
+                octave = initialoctave
+                while absticks < tickrange[1]:
+                    for chordnote in chordlist:
+                        note = chordnote + octave*12
+                        if midirange[0] <= note <= midirange[-1]:
+                            self.addnote( note, self.currentvelocity, absticks, 
+                                self.currentnoteticks - config.EDITnotespace
+                            )
+                            absticks += self.currentnoteticks
+                            if absticks >= tickrange[1]:
+                                break
+                    octave += deltaoctave 
+                    if octave > lastoctave or octave < firstoctave:
+                        if resetoctave == None:
+                            deltaoctave *= -1
+                            octave += deltaoctave
+                            chordlist.reverse()
+                        else:
+                            octave = resetoctave
+
+                self.setalert("Upward arpeggio")
+            else:
+                self.setalert("Arpeggio doesn't fit here")
+        
 
 #### EDIT CLASS 
 
@@ -1578,7 +1726,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
 
             if self.anchor:
                 self.keymusic.setselectanchor( [ self.anchor[0], 
-                                                (self.anchor[1] - self.currentabsoluteticks)*self.pixelspertick ] )
+                    (self.anchor[1] - self.currentabsoluteticks)*self.pixelspertick ] )
             else:
                 self.keymusic.setselectanchor( 0 )
         else:

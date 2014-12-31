@@ -1,6 +1,11 @@
 # KNOWN ISSUES
 ================================================
 
+## getting a visual block, then pressing HOME or END
+
+does not show the visual block, but it is active somehow.
+
+
 ## changing instrument on one song affects other songs using defaults
 
 editing one song, changing its instrument, and going over to
@@ -64,6 +69,7 @@ R:  reverse note selection (left to right)
 ## search help box
 
 ctrl+/  -   search help box
+maybe ctrl+shift+/  - search all help boxes.
 
 
 ## quick-insert (q)

@@ -42,6 +42,11 @@ RESOURCEdirectory = "resources"
 # click track or metronome settings:
 METRONOMEdefault = False    # whether to default to a metronome/clicktrack or not
 CLICKTRACKvolume = 0.05     # number from 0 to 1
+
+# for some reason, the soundfont has the octave off by one.  YMMV:
+LOWESTnote = 9      # usually this is 21 (low A on piano)
+HIGHESTnote = 96    # and this is 108    (high C on piano)
+
 # instrument bank:  originally copied from /usr/share/sounds/sf2/FluidR3_GM.sf2,
 # but then I found an augmented version online.  Search the internet for it:
 SOUNDfont = "FluidR3_GM-2.sf2"  # put it in your RESOURCEdirectory.

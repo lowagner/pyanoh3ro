@@ -2,7 +2,8 @@
 S'BookmarkTicks'
 p1
 (lp2
-F20160.0
+F40320.0
+aF39690.0
 asS'Metronome'
 p3
 I00

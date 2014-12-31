@@ -647,11 +647,11 @@ class DDRClass( GameChunkClass ):
                 self.setalert("Page down")
                 return 1
             elif event.key == pygame.K_HOME:
-                self.keymusic.centeredmidinote = 9
+                self.keymusic.centeredmidinote = config.LOWESTnote
                 self.setalert("At lowest (piano) key")
                 return 1
             elif event.key == pygame.K_END:
-                self.keymusic.centeredmidinote = 96
+                self.keymusic.centeredmidinote = config.HIGHESTnote
                 self.setalert("At highest (piano) key")
                 return 1
             elif event.key == pygame.K_COMMA: # press comma (<)
@@ -1115,7 +1115,7 @@ class KeyboardAndMusicVisualsClass( GameElementClass ):
         self.defaulthalfwidth = config.KEYwidth / 2 # default half-width of white keys
         self.k = 0.005  # spring constant
         self.incrementnotedistance = []
-        startingi = 9 #lowest octave starts with A
+        startingi = config.LOWESTnote #lowest octave starts with A
         self.effectivekeyhalfwidths = []
         endingi = 12 # all octaves, besides the highest, go to 12
         for octaves in range(9): # 9 octaves, but the first and last are only partial
@@ -1136,7 +1136,7 @@ class KeyboardAndMusicVisualsClass( GameElementClass ):
                                             width=15) )
 
             startingi = 0 # all the rest of the octaves start with C
-        # lowest A has index 0, which is midinote 9
+        # lowest A has index 0, which is midinote config.LOWESTnote
         # lowest C has index 3
 
         self.centeredmidinote = 60.0  # center it around middle C to begin with.
@@ -1189,7 +1189,7 @@ class KeyboardAndMusicVisualsClass( GameElementClass ):
         blackkeyy = screenheight-(whitekeylength - blackkeylength) # y position of the black keys
                                                                    # measured from bottom of note.
 
-        centerkeyindexNONINT = self.centeredmidinote - 9 # but this is not necessarily an integer
+        centerkeyindexNONINT = self.centeredmidinote - config.LOWESTnote # but this is not necessarily an integer
         centerkeyindex0 = int( centerkeyindexNONINT )
         eta = centerkeyindexNONINT - centerkeyindex0 # non-integer part of the centermidinote
         
@@ -1267,7 +1267,7 @@ class KeyboardAndMusicVisualsClass( GameElementClass ):
                         selectorrect = Rect(0,0, screenwidth, self.cursorpixels)
 
                 else:
-                    selindex = self.selectanchor[0]-9
+                    selindex = self.selectanchor[0]-config.LOWESTnote
 
                     if self.keys[selindex].white:
                         selectorrect = Rect(0, 0, 1.5*self.effectivekeyhalfwidths[selindex],
@@ -1325,7 +1325,7 @@ class KeyboardAndMusicVisualsClass( GameElementClass ):
 #        self.pixelsperbeat = 200 # given as a config
 #        self.pixelspertick = 1.0 * self.pixelsperbeat / self.resolution # pixels/beat / (ticks/beat)
         
-        keyindex =  (midinote-9)
+        keyindex =  (midinote-config.LOWESTnote)
         if keyindex >= 0 and keyindex <= 87:
             # if you are trying to add an off note before we have any on notes...
 #            if velocity == 0 and len(self.keys[keyindex].notes) == 0:
@@ -1443,7 +1443,7 @@ class KeyboardAndMusicVisualsClass( GameElementClass ):
 #### CLASS KEYBOARDANDMUSIC
     def brightenkey( self, midinote = 60, notevel = 100 ): # midinote = 60 is middle C
         # make the key flash on
-        keyindex =  (midinote-9)
+        keyindex =  (midinote-config.LOWESTnote)
         if keyindex >= 0 and keyindex <= 87:
             self.keys[ keyindex ].setstate( on=notevel )
             self.centeredmidinote += 0.01*(midinote - self.centeredmidinote)
@@ -1469,10 +1469,10 @@ class KeyboardAndMusicVisualsClass( GameElementClass ):
     
     def scoochkeyboard( self, leftright ):
         self.centeredmidinote += leftright
-        if self.centeredmidinote < 9:
-            self.centeredmidinote = 9
-        elif self.centeredmidinote > 96:
-            self.centeredmidinote = 96
+        if self.centeredmidinote < config.LOWESTnote:
+            self.centeredmidinote = config.LOWESTnote
+        elif self.centeredmidinote > config.HIGHESTnote:
+            self.centeredmidinote = config.HIGHESTnote
 
     def setcursorheight( self, pixels = 0 ):
         self.cursorpixels = pixels
