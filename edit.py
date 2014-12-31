@@ -1494,7 +1494,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                 self.addmidinote( midinote )
                 # try to delete any subsequent on notes which would interfere with
                 # this notes extension:
-                if self.piece.deleteonnote( note[0], [note[2], note[3]+extension], 
+                if self.piece.deleteonnote( note[0], [note[2], note[2]+note[3]+extension+config.EDITnotespace], 
                     self.currenttrack ):
                     # there were no other on notes in the region.  so we need to add an off note.
                     midinote = MIDI.NoteOffEvent( pitch=note[0] )
