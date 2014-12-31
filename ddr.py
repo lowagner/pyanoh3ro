@@ -537,7 +537,7 @@ class DDRClass( GameChunkClass ):
     
     def commonnav( self, event, midi ):
         if event.key == pygame.K_w:
-            self.setalert("playing track "+str(self.currenttrack))
+            self.setalert("Playing track "+str(self.currenttrack))
             print "ready ", self.readynotes
             print "selecting ", self.selectednotes
         elif event.key == pygame.K_h or event.key == pygame.K_LEFT: # press left 
@@ -573,7 +573,10 @@ class DDRClass( GameChunkClass ):
                         # if shift was pressed, check if we can loop.
                         self.looping = False    # we can't unless we can.
                         if len(self.bookmarkticks) < 2:
-                            self.setalert("Need another bookmark to start looping (shift+SPACE)")
+                            if config.SMALLalerts:
+                                self.setalert("Add more bookmarks to loop")
+                            else:
+                                self.setalert("Need another bookmark to start looping (shift+SPACE)")
                         else:
                             bookmarkindex = 0
                             self.loopingbookmarkindex = None
@@ -593,7 +596,7 @@ class DDRClass( GameChunkClass ):
                                     else:
                                         self.setalert("Next bookmark was placed behind this.")
                                 else:
-                                    self.setalert("Not enough bookmarks to loop.")
+                                    self.setalert("At last bookmark, can't loop here.")
 
                     
                 return 1
@@ -713,7 +716,7 @@ class DDRClass( GameChunkClass ):
                         self.setalert("Bookmark removed.")
                     except ValueError:
                         self.bookmarkticks.append(self.currentabsoluteticks)
-                        self.setalert("Bookmark added.  (Use b|B to jump between bookmarks.)")
+                        self.setalert("Bookmark added.  (Use b|B to visit others.)")
 
                 elif len(self.bookmarkticks) == 0:
                     self.setalert("No bookmarks.  Add one with ctrl+b")
@@ -724,7 +727,10 @@ class DDRClass( GameChunkClass ):
                     if self.currentabsoluteticks != nextticks:
                         self.setcurrentticksandload( nextticks )
                         self.previousabsoluteticks = previous
-                    self.setalert("At only bookmark.  Add more (or delete this one) with ctrl+b.")
+                    if config.SMALLalerts:
+                        self.setalert("At only bookmark.")
+                    else:
+                        self.setalert("At only bookmark.  Add more (or delete this one) with ctrl+b.")
                 else:
                     if (pygame.key.get_mods() & pygame.KMOD_SHIFT):
                         # proceed backwards through bookmarks
@@ -876,7 +882,7 @@ class DDRClass( GameChunkClass ):
     def setalert( self, string, time = 5000 ):
         self.alerttext = string
         self.alerttimer = time
-        fontandsize = pygame.font.SysFont(config.FONT, int(20*config.FONTSIZEmultiplier) )
+        fontandsize = pygame.font.SysFont(config.FONT, int(21*config.FONTSIZEmultiplier) )
         self.alert = fontandsize.render( self.alerttext, 1, (255,255,255) )
         self.alertbox = self.alert.get_rect()
 

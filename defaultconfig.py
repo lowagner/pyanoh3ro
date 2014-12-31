@@ -27,6 +27,8 @@ MEASUREcolor = (10,0,10)
 HELPERLINEmax = 5
 # what color is the cursor in edit mode:
 CURSORcolor = (100,250,250)
+# for small screens, you should ask for small notifications:
+SMALLalerts = True
 
 # NON-DISPLAY SETTINGS
 

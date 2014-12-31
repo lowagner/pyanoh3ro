@@ -463,7 +463,10 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                         self.keymusic.centeredmidinote = switch[0]
                         self.setcurrentticksandload( switch[1] )
                         self.play = False
-                        self.setalert("Cursor and visual block anchor switched.")
+                        if config.SMALLalerts:
+                            self.setalert("Cursor/visual anchor swapped.")
+                        else:
+                            self.setalert("Cursor and visual block anchor swapped.")
 
                     else:
                         # otherwise we hit V again, and we probably want to escape selection mode.
@@ -524,7 +527,10 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                     swap0 = self.anchor[0]
                     self.anchor[0] = self.keymusic.cursorkeyindex + 9
                     self.keymusic.centeredmidinote = swap0
-                    self.setalert("Swapping cursor and visual anchor key position")
+                    if config.SMALLalerts:
+                        self.setalert("Swapping cursor/visual anchor key")
+                    else:
+                        self.setalert("Swapping cursor and visual anchor key position")
             elif self.commonnav( event, midi ):
 #                if self.anchor and self.previousabsoluteticks != self.currentabsoluteticks:
 #                    if ( self.previousabsoluteticks >= self.anchor[1] and
@@ -562,12 +568,15 @@ class EditClass( DDRClass ): # inherit from the DDRClass
             elif (event.key == pygame.K_SLASH
                    or event.key == pygame.K_SEMICOLON or event.key == pygame.K_COLON ):
                 self.setstate( state=self.COMMANDstate  ) 
-            elif (event.key == pygame.K_p):
+            elif (event.key == pygame.K_i):
                 self.waitforkeytoplay = 1 - self.waitforkeytoplay
                 if self.waitforkeytoplay:
-                    self.setalert( "Pressing a key will start notes-a-rolling" )
+                    if config.SMALLalerts:
+                        self.setalert( "Piano rolls on input" )
+                    else:
+                        self.setalert( "Pressing a key will start notes-a-rolling" )
                 else:
-                    self.setalert( "Static input" )
+                    self.setalert( "Piano static on input" )
             elif (event.key == pygame.K_i):
                 self.insertmode = 1 - self.insertmode
                 if self.insertmode:
@@ -1001,7 +1010,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                 self.listeningfortext = True
                 self.askingfor = "search help"
                 self.listeningact = self.searchhelp
-                self.setalert("Type in text to search in help.")
+                self.setalert("Search in help.")
                 return 1
             elif ( event.key == pygame.K_n ):
                 if self.lasthelpsearched:
@@ -1045,7 +1054,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                     i += 1
                 if success:
                     self.sethelperlines( self.state )
-                    self.setalert("Wrapped and found text in help.")
+                    self.setalert("Wrapped, found text in help.")
                 else:
                     self.setalert("Text not found in help.")
         else:
@@ -1072,7 +1081,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                     i -= 1
                 if success:
                     self.sethelperlines( self.state )
-                    self.setalert("Wrapped and found text in help.")
+                    self.setalert("Wrapped, found text in help.")
                 else:
                     self.setalert("Text not found in help.")
     
@@ -1175,7 +1184,10 @@ class EditClass( DDRClass ): # inherit from the DDRClass
             direction *= 10
 
         self.changevelocityofselectednotes( midi, direction, True )
-        self.setalert( "volume changed "+str(int(round(1.0*(tickmax-tickmin)/self.currentnoteticks)))+" lines." )
+        if config.SMALLalerts:
+            self.setalert( "Volume changed")
+        else:
+            self.setalert( "Volume changed "+str(int(round(1.0*(tickmax-tickmin)/self.currentnoteticks)))+" lines." )
 
 #### EDIT CLASS 
     
@@ -1235,17 +1247,20 @@ class EditClass( DDRClass ): # inherit from the DDRClass
         if self.selectednotes:
             # we have a selection going...
             if dontkeepnotes:
-                alerttxt = "Deleted notes in "
+                alerttxt = "Deleted notes from "
             else:
                 self.copyselectednotes()
                 alerttxt = "Cut notes into clipboard from "
             self.piece.deletenotes( self.selectednotes, self.currenttrack )
             self.setcurrentticksandload( self.currentabsoluteticks )
-            if midimax-midimin >= 127:
-                self.setalert( alerttxt+str(int(round(1.0*(tickmax-tickmin)/self.currentnoteticks)))+" rows")
+            if config.SMALLalerts:
+                self.setalert(alerttxt[:-6])
             else:
-                self.setalert( alerttxt+str(int(round(1.0*(tickmax-tickmin)/self.currentnoteticks)))+" rows, "+
-                str(midimax-midimin+1)+" columns")
+                if midimax-midimin >= 127:
+                    self.setalert( alerttxt+str(int(round(1.0*(tickmax-tickmin)/self.currentnoteticks)))+" rows")
+                else:
+                    self.setalert( alerttxt+str(int(round(1.0*(tickmax-tickmin)/self.currentnoteticks)))+" rows, "+
+                    str(midimax-midimin+1)+" columns")
             self.anchor = 0
         else:
             self.setalert("No notes to delete here.")
@@ -1292,7 +1307,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
        
         if noteclipboard:
             if dontkeepnotes:
-                alerttxt="Carved notes in "
+                alerttxt="Carved notes from "
             else:
                 alerttxt="Carved notes to clipboard from "
                 self.noteclipboard = []        # relative pitches/ticks in this noteclipboard
@@ -1304,11 +1319,14 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                                               ] )
                 self.setcurrentticksandload( self.currentabsoluteticks )
             self.anchor = 0
-            if midimax-midimin >= 127:
-                self.setalert( alerttxt+str(int(round(1.0*(tickmax-tickmin)/self.currentnoteticks)))+" rows")
+            if config.SMALLalerts:
+                self.setalert( alerttxt[:-6] )
             else:
-                self.setalert( alerttxt+str(int(round(1.0*(tickmax-tickmin)/self.currentnoteticks)))+" rows, "+
-                str(midimax-midimin+1)+" columns")
+                if midimax-midimin >= 127:
+                    self.setalert( alerttxt+str(int(round(1.0*(tickmax-tickmin)/self.currentnoteticks)))+" rows")
+                else:
+                    self.setalert( alerttxt+str(int(round(1.0*(tickmax-tickmin)/self.currentnoteticks)))+" rows, "+
+                    str(midimax-midimin+1)+" columns")
         else:
             self.setalert("No notes to carve here.")
 
@@ -1340,7 +1358,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                 for note in self.selectednotes:
                     self.piece.addnote( note[0],note[1],note[2],note[3], self.currenttrack )
             else:
-                alerttxt = "Attempted a merge with every note in "
+                alerttxt = "Attempted a merge next in "
                 for note in self.selectednotes:
                     midinote = MIDI.NoteOnEvent( pitch=note[0], velocity=note[1] )
                     midinote.absoluteticks = note[2]
@@ -1354,11 +1372,14 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                         self.addmidinote( midinote )
 
             self.setcurrentticksandload( self.currentabsoluteticks )
-            if midimax-midimin >= 127:
-                self.setalert( alerttxt+str(int(round(1.0*(tickmax-tickmin)/self.currentnoteticks)))+" rows")
+            if config.SMALLalerts: 
+                self.setalert( alerttxt[:-4] )
             else:
-                self.setalert( alerttxt+str(int(round(1.0*(tickmax-tickmin)/self.currentnoteticks)))+" rows, "+
-                str(midimax-midimin+1)+" columns")
+                if midimax-midimin >= 127:
+                    self.setalert( alerttxt+str(int(round(1.0*(tickmax-tickmin)/self.currentnoteticks)))+" rows")
+                else:
+                    self.setalert( alerttxt+str(int(round(1.0*(tickmax-tickmin)/self.currentnoteticks)))+" rows, "+
+                    str(midimax-midimin+1)+" columns")
             self.anchor = 0
         else:
             self.setalert("No notes to merge here.")
@@ -1384,11 +1405,14 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                 alerttxt = "Shortened notes in "
 
             self.setcurrentticksandload( self.currentabsoluteticks )
-            if midimax-midimin >= 127:
-                self.setalert( alerttxt+str(int(round(1.0*(tickmax-tickmin)/self.currentnoteticks)))+" rows")
+            if config.SMALLalerts: 
+                self.setalert( alerttxt[:-4] )
             else:
-                self.setalert( alerttxt+str(int(round(1.0*(tickmax-tickmin)/self.currentnoteticks)))+" rows, "+
-                str(midimax-midimin+1)+" columns")
+                if midimax-midimin >= 127:
+                    self.setalert( alerttxt+str(int(round(1.0*(tickmax-tickmin)/self.currentnoteticks)))+" rows")
+                else:
+                    self.setalert( alerttxt+str(int(round(1.0*(tickmax-tickmin)/self.currentnoteticks)))+" rows, "+
+                    str(midimax-midimin+1)+" columns")
         else:
             self.setalert("No notes to shorten here.")
     
@@ -1438,11 +1462,14 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                 alerttxt="Extended notes in "
 
             self.setcurrentticksandload( self.currentabsoluteticks )
-            if midimax-midimin >= 127:
-                self.setalert( alerttxt+str(int(round(1.0*(tickmax-tickmin)/self.currentnoteticks)))+" rows")
+            if config.SMALLalerts: 
+                self.setalert( alerttxt[:-4] )
             else:
-                self.setalert( alerttxt+str(int(round(1.0*(tickmax-tickmin)/self.currentnoteticks)))+" rows, "+
-                str(midimax-midimin+1)+" columns")
+                if midimax-midimin >= 127:
+                    self.setalert( alerttxt+str(int(round(1.0*(tickmax-tickmin)/self.currentnoteticks)))+" rows")
+                else:
+                    self.setalert( alerttxt+str(int(round(1.0*(tickmax-tickmin)/self.currentnoteticks)))+" rows, "+
+                    str(midimax-midimin+1)+" columns")
         else:
             self.setalert("No notes to extend here.")
     
@@ -1515,11 +1542,14 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                                                       note[2]-currentticks, #absolute ticks
                                                       note[3] # duration
                                                       ] )
-                        self.setalert("Pasted and copied existing notes to clipboard.")
+                        self.setalert("Swapped clipboard/screen contents.")
                     else:
                         self.setalert("Pasted but no existing notes to copy.")
                 else:
-                    self.setalert("Violent paste (deleted underlying note region).")
+                    if config.SMALLalerts:
+                        self.setalert("Violent paste.")
+                    else:
+                        self.setalert("Violent paste (deleted underlying note region).")
             else:
                 # just remove existing notes when they interfere with adding notes
                 self.setalert("Pasted notes from clipboard.")
@@ -1555,7 +1585,10 @@ class EditClass( DDRClass ): # inherit from the DDRClass
             self.keymusic.setcursorheight( 0 )
             self.keymusic.setselectanchor( 0 )
 
-        DDRClass.draw( self, screen )
+        #backdrop screen
+        self.backdrop.draw( screen )
+        #draw keyboard and music
+        self.keymusic.draw( screen )
         
         if self.listeningfortext:
             fontandsize = pygame.font.SysFont(self.commandfont, self.commandfontsize)
@@ -1594,5 +1627,11 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                 self.helperlabelbox[i].top = self.helperlabelbox[i-1].bottom 
                 #pygame.draw.rect( screen, self.helperbackcolor,  self.helperlabelbox[i] )
                 screen.blit( self.helperlabel[i], self.helperlabelbox[i] )
+        
+        if self.alerttext:
+            self.alertbox.top = 5
+            self.alertbox.right = screen.get_width() - 5
+            pygame.draw.rect( screen, self.helperbackcolor, self.alertbox ) 
+            screen.blit( self.alert, self.alertbox ) 
 
 #### END EDIT CLASS
