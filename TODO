@@ -1,16 +1,6 @@
 # KNOWN ISSUES
 ================================================
 
-## setalert doesn't show for small screens
-
-make setalert draw after helper box, add box border behind it.
-
-
-## annotations
-
-annotations don't save after absticks=0.
-
-
 ## changing instrument on one song affects other songs using defaults
 
 editing one song, changing its instrument, and going over to
