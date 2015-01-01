@@ -1,5 +1,6 @@
 from metagame import *
 from ddr import *
+from cmd import *
 from iomidi import *
 from piece import *
 import pygame
@@ -35,6 +36,8 @@ class EditClass( DDRClass ): # inherit from the DDRClass
         self.SELECTstate = 2 # visual block/line type stuff
         self.COMMANDstate = 3 # after pressing escape, then colon (:).  vim-like command mode
         self.INSERTstate = 4 # after pressing i,I, a,A, you can insert notes on the keyboard
+        self.CHORDstate = 5 
+
         self.commandlist = deque([], config.COMMANDhistory) # only allow the deck to get so big...
         self.commandlistindex = -1
         self.commandfont = config.FONT
@@ -47,7 +50,8 @@ class EditClass( DDRClass ): # inherit from the DDRClass
         self.statenames = { self.NAVIGATIONstate : "Navigation",
                             self.SELECTstate : "Select",
                             self.COMMANDstate : "Command",
-                            self.INSERTstate : "Insert" }
+                            self.INSERTstate : "Insert",
+                            self.CHORDstate : "Chord" }
         self.helper = { 
             self.NAVIGATIONstate : [ 0, #start line
                  [ " ctrl+j|k   scroll this helper list down|up",
@@ -107,6 +111,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                  [ "ctrl+j|k    scroll this helper list down|up",
                    "  ESCAPE    go back to navigation mode",
                    " up|down    navigate command history",
+                   " PgUp|Dn    earliest|clear command",
                    " ",
                    "Type in and press enter to execute:",
                    "  q|quit    quit PyanoH3ro",
@@ -142,7 +147,25 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                    " Play your dang MIDI keyboard! "
                    ]
                ],
+            self.CHORDstate : [ 0, #start line
+                 [ "ctrl+j|k    scroll this helper list down|up",
+                   "",
+                   "Type in and press enter to add chord:",
+                   "       C    C major in selected region",
+                   "      C7    C7 major in selected region",
+                   "      C9    C9 major in selected region",
+                   "      Am    A minor chord",
+                   "and so on, with many other keys and combos.",
+                   "     C;/    C major arpeggio going up",
+                   "     C;\    C major arpeggio going down",
+                   "    C;\/    C major arpeggio down and up",
+                   "    C;/\    C major arpeggio up and down",
+                   "and also with other keys."
+                   ]
+               ],
             }
+
+        # this helper guy gives information on what the heck you're doing
         self.helperlines = [] # current list of text to be written to the screen
         self.lasthelpsearched = ""
         self.helperlinemax = max(1, config.HELPERLINEmax)
@@ -155,18 +178,13 @@ class EditClass( DDRClass ): # inherit from the DDRClass
         self.waitforkeytoplay = 0
 
         # for grabbing information...
-        self.command = ""
-
-        self.listeningfortext = False
-        self.askingfor = ""
-        self.listeningmessage = ""
-        self.listeninghistory = { "quick chord" : deque([]),
-                                  "search help" : deque([]) }
-        self.listeningindex = -1
-        self.listeningact = None
-
-        # this helper guy gives information on what the heck you're doing
-        self.maxhelperlines = 5 # will spit out at most 5 lines, which you can navigate
+        self.commander = CommandClass( self.docommand, "cmd" )
+        self.chordcommander = CommandClass( self.addquickchordinselection, "quick chord" )
+        
+        self.preemptor = None
+        self.preemptingfor = { 
+            "search help" : CommandClass( self.searchhelp, "search help" )
+        }
 
         self.anchor = 0 #will go to [ midinote, anchorposition ]
         #self.trackticks = [ 0 for t in self.piece.notes ]
@@ -194,162 +212,9 @@ class EditClass( DDRClass ): # inherit from the DDRClass
         we don't process midi input here; rather we allow for midi output
         when we want to, say on pressing some non-midi device it makes a noise.'''
 
-        if self.listeningfortext and event.type == pygame.KEYDOWN:
-            # if we're waiting for a message from the user
-            if event.key == 27:
-                if self.listeningindex < 0:
-                    if len(self.listeningmessage):
-                        if len(self.listeninghistory[self.askingfor]):
-                            if self.listeninghistory[self.askingfor][0] != self.listeningmessage:
-                                self.listeninghistory[self.askingfor].appendleft(self.listeningmessage)
-                        else:
-                            self.listeninghistory[self.askingfor].appendleft(self.listeningmessage)
-                else:
-                    # if we were looking at the listeninghistory[self.askingfor], see if we did not
-                    # edit the command we used previously:
-                    if self.listeningmessage != self.listeninghistory[self.askingfor][self.listeningindex]:
-                        self.listeninghistory[self.askingfor] = deque( 
-                            list(itertools.islice(self.listeninghistory[self.askingfor],0,self.listeningindex))+
-                            [self.listeningmessage] +
-                            list(itertools.islice(self.listeninghistory[self.askingfor],self.listeningindex,len(self.listeninghistory[self.askingfor]))),
-                            config.COMMANDhistory )
-                        #self.listeningindex -= 1
-                    
-                self.listeningindex = -1
-                self.listeningmessage = ""
-                self.listeningfortext = False
-                return {} 
-                
-            elif event.key == pygame.K_BACKSPACE:
-                self.listeningmessage = self.listeningmessage[0:-1] # take out last letter
-            elif event.key == pygame.K_RETURN:
-                self.listeningfortext = False
-                if self.listeningmessage:
-                    # add the message to the history:
-                    self.listeninghistory[self.askingfor].appendleft( self.listeningmessage )
-                    # enact the message:
-                    self.listeningact(self.listeningmessage) 
-                    # destroy the old message
-                    self.listeningmessage = ""
-
-            elif event.key == pygame.K_UP:
-                # navigate the listening history
-                if self.listeningindex < 0:
-                    if len(self.listeningmessage):
-                        if len(self.listeninghistory[self.askingfor]):
-                            if self.listeninghistory[self.askingfor][0] != self.listeningmessage:
-                                self.listeninghistory[self.askingfor].appendleft(self.listeningmessage)
-                                self.listeningindex = 0
-                        else:
-                            self.listeninghistory[self.askingfor].appendleft(self.listeningmessage)
-                            self.listeningindex = 0
-                else:
-                    # if we were looking at the commandlist, see if we did not
-                    # edit the command we used previously:
-                    if self.listeningmessage != self.listeninghistory[self.askingfor][self.listeningindex]:
-                        self.listeninghistory[self.askingfor] = deque( 
-                            list(itertools.islice(self.listeninghistory[self.askingfor],0,self.listeningindex+1))+
-                            [self.listeningmessage] +
-                            list(itertools.islice(self.listeninghistory[self.askingfor],self.listeningindex+1,len(self.listeninghistory[self.askingfor]))),
-                            config.COMMANDhistory 
-                        )
-                        #self.commandlist.insert(self.listeningindex+1, self.command)
-                        self.listeningindex += 1
-                    
-                self.listeningindex += 1
-                if self.listeningindex >= len(self.listeninghistory[self.askingfor]):
-                    self.listeningindex = len(self.listeninghistory[self.askingfor])-1
-                self.listeningmessage = self.listeninghistory[self.askingfor][ self.listeningindex ]
-                return {} 
-            
-            elif event.key == pygame.K_DOWN:
-                # navigate the command history
-                if self.listeningindex < 0:
-                    if len(self.listeningmessage):
-                        if len(self.listeninghistory[self.askingfor]):
-                            if self.listeninghistory[self.askingfor][0] != self.listeningmessage:
-                                self.listeninghistory[self.askingfor].appendleft(self.listeningmessage)
-                        else:
-                            self.listeninghistory[self.askingfor].appendleft(self.listeningmessage)
-                else:
-                    # if we were looking at the listeninghistory[self.askingfor], see if we did not
-                    # edit the command we used previously:
-                    if self.listeningmessage != self.listeninghistory[self.askingfor][self.listeningindex]:
-                        self.listeninghistory[self.askingfor] = deque( 
-                            list(itertools.islice(self.listeninghistory[self.askingfor],0,self.listeningindex))+
-                            [self.listeningmessage] +
-                            list(itertools.islice(self.listeninghistory[self.askingfor],self.listeningindex,len(self.listeninghistory[self.askingfor]))),
-                            config.COMMANDhistory )
-                        #self.listeningindex -= 1
-                    
-                self.listeningindex -= 1
-                if self.listeningindex < 0:
-                    self.listeningmessage = ""
-                else:
-                    self.listeningmessage = self.listeninghistory[self.askingfor][ self.listeningindex ]
-                return {} 
-
-            elif event.key == pygame.K_PAGEUP:
-                # navigate the command history
-                if self.listeningindex < 0:
-                    if len(self.listeningmessage):
-                        if len(self.listeninghistory[self.askingfor]):
-                            if self.listeninghistory[self.askingfor][0] != self.listeningmessage:
-                                self.listeninghistory[self.askingfor].appendleft(self.listeningmessage)
-                                self.listeningindex = 0
-                        else:
-                            self.listeninghistory[self.askingfor].appendleft(self.listeningmessage)
-                            self.listeningindex = 0
-                else:
-                    # if we were looking at the commandlist, see if we did not
-                    # edit the command we used previously:
-                    if self.listeningmessage != self.listeninghistory[self.askingfor][self.listeningindex]:
-                        self.listeninghistory[self.askingfor] = deque( 
-                            list(itertools.islice(self.listeninghistory[self.askingfor],0,self.listeningindex+1))+
-                            [self.listeningmessage] +
-                            list(itertools.islice(self.listeninghistory[self.askingfor],self.listeningindex+1,len(self.listeninghistory[self.askingfor]))),
-                            config.COMMANDhistory 
-                        )
-                        #self.commandlist.insert(self.listeningindex+1, self.command)
-                        self.listeningindex += 1
-                
-                if len(self.listeninghistory[self.askingfor]): 
-                    self.listeningindex = len(self.listeninghistory[self.askingfor])-1
-                    self.listeningmessage = self.listeninghistory[self.askingfor][ self.listeningindex ]
-                else:
-                    self.listeningindex = -1
-                    self.listeningmessage = ""
-                return {} 
-            
-            elif event.key == pygame.K_PAGEDOWN:
-                # navigate the command history
-                if self.listeningindex < 0:
-                    if len(self.listeningmessage):
-                        if len(self.listeninghistory[self.askingfor]):
-                            if self.listeninghistory[self.askingfor][0] != self.listeningmessage:
-                                self.listeninghistory[self.askingfor].appendleft(self.listeningmessage)
-                        else:
-                            self.listeninghistory[self.askingfor].appendleft(self.listeningmessage)
-                else:
-                    # if we were looking at the commandlist, see if we did not
-                    # edit the command we used previously:
-                    if self.listeningmessage != self.listeninghistory[self.askingfor][self.listeningindex]:
-                        self.listeninghistory[self.askingfor] = deque( 
-                            list(itertools.islice(self.listeninghistory[self.askingfor],0,self.listeningindex))+
-                            [self.listeningmessage] +
-                            list(itertools.islice(self.listeninghistory[self.askingfor],self.listeningindex,len(self.listeninghistory[self.askingfor]))),
-                            config.COMMANDhistory )
-                    
-                self.listeningindex = -1
-                self.listeningmessage = ""
-                return {} 
-
-
-            elif event.key < 128:
-                newletter = chr(event.key) #here's our new letter
-                if pygame.key.get_mods() & pygame.KMOD_SHIFT: # if the shift key is held down
-                    newletter = newletter.upper() #make it uppercase
-                self.listeningmessage += newletter #add it to the message
+        if self.preemptor:
+            if len(self.preemptor.process( event, midi )):
+                self.preemptor = None
             return {}
 
         elif self.metanav( event, midi ):
@@ -362,7 +227,10 @@ class EditClass( DDRClass ): # inherit from the DDRClass
             return self.insprocess( event, midi )
         
         elif self.state == self.COMMANDstate:
-            return self.cmdprocess( event, midi )
+            return self.commander.process( event, midi )
+
+        elif self.state == self.CHORDstate:
+            return self.chordcommander.process( event, midi )
 
         else:
             Error(" UNKNOWN state in EditClass.process( self, event, midi ) ")
@@ -402,12 +270,8 @@ class EditClass( DDRClass ): # inherit from the DDRClass
             elif event.key == pygame.K_q:
                 # quick insert.  add note at cursor
                 if self.anchor:
+                    self.setstate( state=self.CHORDstate ) 
                     self.setalert("Choose shorthand chord") 
-                    self.listeningfortext = True
-                    self.askingfor = "quick chord"
-                    self.listeningmessage = ""
-                    self.listeningindex = -1
-                    self.listeningact = self.addquickchordinselection
                 else:
                     self.addnoteatcursor( midi )
                     if pygame.key.get_mods() & pygame.KMOD_SHIFT:
@@ -596,356 +460,198 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                 return {}
         return {}
     
-    def cmdprocess( self, event, midi ):
+    def docommand( self, command, midi ):
         # COMMAND STATE.  in navigation mode, press : and then type various commands:
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_BACKSPACE:
-                self.command = self.command[0:-1] # take out last letter
-            elif event.key == pygame.K_RETURN:
-                if self.command:
-                    if self.command == "quit" or self.command == "q":
-                        return { "gamestate" : 0, "printme" : "quitting from edit mode" } 
-                    elif self.command == "return":
-                        midi.clearall()
-                        return { "gamestate" : config.GAMESTATEmainmenu, 
-                                 "printme" : "return from edit mode" } 
-                    elif self.command == "reload":
-                        midi.clearall()
-                        self.__init__( self.piece.piecedir, midi )
-                    elif self.command == "save" or self.command == "s" or self.command == "w":
-                        self.piece.settings["BookmarkTicks"] = self.bookmarkticks
-                        self.piece.writeinfo()
-                        self.piece.writemidi()
-                        self.wrapupcommand( self.piece.piecedir+" saved!" )
-                        return {}
-                    elif self.command == "clear" or self.command == "reset":
-                        midi.clearall()
-                        self.piece.clear()
-                        self.play = False
-                        self.setcurrentticksandload(0)
-                        self.wrapupcommand( "all notes erased." )
-                        return {}
-                    elif self.command == "console":
-                        self.listeningfortext = True
-                        self.askingfor = "search help"
-                        self.listeningact = self.searchhelp
-                        self.wrapupcommand("search help")
-                        return {}
-                    else:
-                        split = self.command.split()
+        if command:
+            if command == "quit" or command == "q":
+                return { "gamestate" : 0, "printme" : "quitting from edit mode" } 
+            elif command == "return":
+                midi.clearall()
+                return { "gamestate" : config.GAMESTATEmainmenu, 
+                         "printme" : "return from edit mode" } 
+            elif command == "reload":
+                midi.clearall()
+                self.__init__( self.piece.piecedir, midi )
+                return { "printme" : "reloaded from file" }
+            elif command == "save" or command == "s" or command == "w":
+                self.piece.settings["BookmarkTicks"] = self.bookmarkticks
+                self.piece.writeinfo()
+                self.piece.writemidi()
+                return self.wrapupcommand( self.piece.piecedir+" saved!" )
+            elif command == "clear" or command == "reset":
+                midi.clearall()
+                self.piece.clear()
+                self.play = False
+                self.setcurrentticksandload(0)
+                return self.wrapupcommand( "all notes erased." )
+            elif command == "search":
+                self.preemptor = self.preemptingfor["search help"]
+                return self.wrapupcommand("search help")
+            else:
+                split = command.split()
 
-                        if split[0] == "v":
-                            try:
-                                velocity = int(split[1])
-                                if velocity <= 0:
-                                    velocity = 1
-                                elif velocity > 127:
-                                    velocity = 127
+                if split[0] == "v":
+                    try:
+                        velocity = int(split[1])
+                        if velocity <= 0:
+                            velocity = 1
+                        elif velocity > 127:
+                            velocity = 127
 
-                                self.currentvelocity = velocity 
-                                self.wrapupcommand("Setting quick-input velocity to "+str(velocity) )
-                            except (IndexError, ValueError):
-                                self.wrapupcommand("use \"v X\" to set velocity/volume to X")
-                            return {}
+                        self.currentvelocity = velocity 
+                        return self.wrapupcommand("Setting quick-input velocity to "+str(velocity) )
+                    except (IndexError, ValueError):
+                        return self.wrapupcommand("use \"v X\" to set velocity/volume to X")
 
-                        elif split[0] == "t":
-                            try:
-                                tempo = float(split[1])
-                                if tempo < 10:
-                                    tempo = 10
-                                elif tempo > 300:
-                                    tempo = 300
-                                
-                                self.piece.addtempoevent( tempo, 
-                                    self.roundtonoteticks( self.currentabsoluteticks )
-                                )
-                                self.setcurrentticksandload( self.currentabsoluteticks )
-
-                                self.wrapupcommand("setting current tempo to "+str(tempo) )
-                            except (IndexError, ValueError):
-                                self.wrapupcommand("use \"t X\" to set tempo to X")
-                            return {}
+                elif split[0] == "t":
+                    try:
+                        tempo = float(split[1])
+                        if tempo < 10:
+                            tempo = 10
+                        elif tempo > 300:
+                            tempo = 300
                         
-                        elif split[0] == "ts":
-                            try:
-                                ts = int(split[1])
-                                if ts < 1:
-                                    ts = 1
-                                elif ts > 25:
-                                    ts = 25
-                                
-                                self.piece.addtimesignatureevent( ts,  
-                                    self.roundtonoteticks( self.currentabsoluteticks )
-                                )
-                                self.setcurrentticksandload( self.currentabsoluteticks )
-
-                                self.wrapupcommand("setting current time signature to "+str(ts) )
-                            except (IndexError, ValueError):
-                                self.wrapupcommand("use \"ts X\" to set time signature numerator to X")
-                            return {}
-                        elif split[0] == "r":
-                            try: 
-                                split1 = split[1]
-                                if split1 == "ts":
-                                    if self.piece.removetimesignatureevent( self.currentabsoluteticks ):
-                                        self.wrapupcommand("no current time signature to remove")
-                                    else:
-                                        self.wrapupcommand("removing current time signature")
-                                        self.setcurrentticksandload( self.currentabsoluteticks )
-                                elif split1 == "t":
-                                    if self.piece.removetempoevent( self.currentabsoluteticks ):
-                                        self.wrapupcommand("no current tempo to remove")
-                                    else:
-                                        self.wrapupcommand("removing current tempo")
-                                        self.setcurrentticksandload( self.currentabsoluteticks )
-                                elif split1 == "a":
-                                    if self.addremovetext("") == -1:
-                                        self.setcurrentticksandload(self.currentabsoluteticks)
-                                        self.wrapupcommand("removing annotation")
-                                    else:
-                                        self.wrapupcommand("no annotation to remove")
-                                else:
-                                    raise IndexError
-                            except IndexError:
-                                self.wrapupcommand("use \"r t|ts|a\" to remove tempo|timesignature|annotation")
-                            return {}
-                        elif split[0] == "i":
-                            i = None
-                            try:
-                                i = int(split[1])
-                            except ValueError:
-                                try:
-                                    i = config.INSTRUMENT[split[1]]
-                                except KeyError:
-                                    pass
-                            except IndexError:
-                                self.wrapupcommand("use \"i X\" to set track instrument to X")
-                                return {}
-                            
-                            if i == None:
-                                self.wrapupcommand( "unknown instrument" )
-                            elif i == "drums":
-                                self.piece.setchannel( midi, self.currenttrack, 9 )
-                                self.wrapupcommand( "setting track to drums (channel 9)" )
-                            else:
-                                if i < 0:
-                                    i = 0
-                                elif i > 127:
-                                    i = 127
-                                self.piece.setinstrument( midi, self.currenttrack, i )
-                                self.wrapupcommand( "setting instrument to "+str(i) )
-                                
-                            return {}
-
-                        elif split[0] == "a":
-                            text = " ".join(split[1:])
-                            result = self.addremovetext( text )
-                            currentticks = self.roundtonoteticks( self.currentabsoluteticks )
-                            self.setcurrentticksandload(currentticks)
-                            if result == 1:
-                                self.wrapupcommand("Added annotation")
-                            elif result == -1:
-                                self.wrapupcommand("Removed annotation")
-                            else:
-                                self.wrapupcommand("No annotation to remove here")
-                        
-                        elif split[0] == "e":
-                            track = None
-                            try:
-                                track = int(split[1])
-                                
-                                if track == self.currenttrack:
-                                    self.wrapupcommand("you are editing track "+str(track)+" already")
-                                else:
-                                    if track < 0:
-                                        track = 0
-                                        self.wrapupcommand("editing track 0 (no negatives)")
-                                    elif track >= len(self.piece.notes): 
-                                        track = len(self.piece.notes)
-                                        self.addtrack()
-                                        self.wrapupcommand("adding track, editing "+str(track))
-                                    else:
-                                        self.wrapupcommand("editing track "+str(track))
-                                    
-                                    # switch from one track to another
-#                                    self.trackticks[self.currenttrack] = self.currentabsoluteticks
-                                    self.currenttrack = track
-                                    self.setcurrentticksandload(self.currentabsoluteticks) #self.trackticks[track] )
-#                                    self.previousabsoluteticks = 0 
-                                    
-                            except ValueError:
-                                self.wrapupcommand( "unknown track to edit" )
-                        elif self.readnotecode( self.command ):
-                            self.setcurrentticksandload( self.currentabsoluteticks )
-                            self.wrapupcommand( "Set notecode to "+self.notecode )
-                        else:
-                            # try to see if the command is an integer (for a line count)
-                            try:
-                                integer = int(split[0])
-                                newticks = self.currentnoteticks*integer
-                                if newticks != self.currentabsoluteticks:
-                                    lastcurrentnoteticks = self.piece.notes[self.currenttrack][-1].absoluteticks
-                                    lastmeasureticks = self.piece.getfloormeasureticks( lastcurrentnoteticks )
-                                    if newticks != 0 and newticks != lastmeasureticks:
-                                        self.previousabsoluteticks = self.currentabsoluteticks
-
-                                    self.setcurrentticksandload( newticks )
-                                    
-                                self.wrapupcommand("at line "+str(integer))
-                                return {}
-                                
-                            except (IndexError, ValueError):
-                                self.wrapupcommand( "unknown command: "+self.command )
-                                return {}
-
-                else:
-                    # no command text given
-                    self.setstate( state=self.NAVIGATIONstate  )
-                    
-            elif event.key == 27: #escape
-                if self.commandlistindex < 0:
-                    # if we weren't looking at the commandlist
-                    if len(self.command):
-                        self.commandlist.appendleft(self.command)
-                else:
-                    # if we were looking at the commandlist, see if we did not
-                    # escape from a command we used previously:
-                    if self.command != self.commandlist[self.commandlistindex]:
-                        self.commandlist.appendleft(self.command)
-                    # otherwise, don't add the command again.
-                    self.commandlistindex = -1
-                self.command = "" # kill command and go back to nav mode
-                self.setstate( state=self.NAVIGATIONstate  )
-            
-            elif event.key == pygame.K_UP:
-                # navigate the command history
-                if self.commandlistindex < 0:
-                    if len(self.command):
-                        if len(self.commandlist):
-                            if self.commandlist[0] != self.command:
-                                self.commandlist.appendleft(self.command)
-                                self.commandlistindex = 0
-                        else:
-                            self.commandlist.appendleft(self.command)
-                            self.commandlistindex = 0
-                else:
-                    # if we were looking at the commandlist, see if we did not
-                    # edit the command we used previously:
-                    if self.command != self.commandlist[self.commandlistindex]:
-                        self.commandlist = deque( 
-                            list(itertools.islice(self.commandlist,0,self.commandlistindex+1))+
-                            [self.command] +
-                            list(itertools.islice(self.commandlist,self.commandlistindex+1,len(self.commandlist))),
-                            config.COMMANDhistory 
+                        self.piece.addtempoevent( tempo, 
+                            self.roundtonoteticks( self.currentabsoluteticks )
                         )
-                        #self.commandlist.insert(self.commandlistindex+1, self.command)
-                        self.commandlistindex += 1
-                    
-                self.commandlistindex += 1
-                if self.commandlistindex >= len(self.commandlist):
-                    self.commandlistindex = len(self.commandlist)-1
-                self.command = self.commandlist[ self.commandlistindex ]
-                return {} 
-            
-            elif event.key == pygame.K_DOWN:
-                # navigate the command history
-                if self.commandlistindex < 0:
-                    if len(self.command):
-                        if len(self.commandlist):
-                            if self.commandlist[0] != self.command:
-                                self.commandlist.appendleft(self.command)
-                        else:
-                            self.commandlist.appendleft(self.command)
-                else:
-                    # if we were looking at the commandlist, see if we did not
-                    # edit the command we used previously:
-                    if self.command != self.commandlist[self.commandlistindex]:
-                        self.commandlist = deque( 
-                            list(itertools.islice(self.commandlist,0,self.commandlistindex))+
-                            [self.command] +
-                            list(itertools.islice(self.commandlist,self.commandlistindex,len(self.commandlist))),
-                            config.COMMANDhistory )
-                        #self.commandlistindex -= 1
-                    
-                self.commandlistindex -= 1
-                if self.commandlistindex < 0:
-                    self.command = ""
-                else:
-                    self.command = self.commandlist[ self.commandlistindex ]
-                return {} 
+                        self.setcurrentticksandload( self.currentabsoluteticks )
 
-            elif event.key == pygame.K_PAGEUP:
-                # navigate the command history
-                if self.commandlistindex < 0:
-                    if len(self.command):
-                        if len(self.commandlist):
-                            if self.commandlist[0] != self.command:
-                                self.commandlist.appendleft(self.command)
-                                self.commandlistindex = 0
-                        else:
-                            self.commandlist.appendleft(self.command)
-                            self.commandlistindex = 0
-                else:
-                    # if we were looking at the commandlist, see if we did not
-                    # edit the command we used previously:
-                    if self.command != self.commandlist[self.commandlistindex]:
-                        self.commandlist = deque( 
-                            list(itertools.islice(self.commandlist,0,self.commandlistindex+1))+
-                            [self.command] +
-                            list(itertools.islice(self.commandlist,self.commandlistindex+1,len(self.commandlist))),
-                            config.COMMANDhistory 
-                        )
-                        #self.commandlist.insert(self.commandlistindex+1, self.command)
-                        self.commandlistindex += 1
+                        return self.wrapupcommand("setting current tempo to "+str(tempo) )
+                    except (IndexError, ValueError):
+                        return self.wrapupcommand("use \"t X\" to set tempo to X")
                 
-                if len(self.commandlist): 
-                    self.commandlistindex = len(self.commandlist)-1
-                    self.command = self.commandlist[ self.commandlistindex ]
-                else:
-                    self.commandlistindex = -1
-                    self.command = ""
-                return {} 
-            
-            elif event.key == pygame.K_PAGEDOWN:
-                # navigate the command history
-                if self.commandlistindex < 0:
-                    if len(self.command):
-                        if len(self.commandlist):
-                            if self.commandlist[0] != self.command:
-                                self.commandlist.appendleft(self.command)
-                        else:
-                            self.commandlist.appendleft(self.command)
-                else:
-                    # if we were looking at the commandlist, see if we did not
-                    # edit the command we used previously:
-                    if self.command != self.commandlist[self.commandlistindex]:
-                        self.commandlist = deque( 
-                            list(itertools.islice(self.commandlist,0,self.commandlistindex))+
-                            [self.command] +
-                            list(itertools.islice(self.commandlist,self.commandlistindex,len(self.commandlist))),
-                            config.COMMANDhistory )
-                    
-                self.commandlistindex = -1
-                self.command = ""
-                return {} 
+                elif split[0] == "ts":
+                    try:
+                        ts = int(split[1])
+                        if ts < 1:
+                            ts = 1
+                        elif ts > 25:
+                            ts = 25
+                        
+                        self.piece.addtimesignatureevent( ts,  
+                            self.roundtonoteticks( self.currentabsoluteticks )
+                        )
+                        self.setcurrentticksandload( self.currentabsoluteticks )
 
-            elif (31 < event.key < 128):
-                newletter = chr(event.key) #here's our new letter
-                if pygame.key.get_mods() & pygame.KMOD_SHIFT: # if the shift key is held down
-                    newletter = newletter.upper() #make it uppercase
-                self.command += newletter #add it to the message
-        return {}
+                        return self.wrapupcommand("setting current time signature to "+str(ts) )
+                    except (IndexError, ValueError):
+                        return self.wrapupcommand("use \"ts X\" to set time signature numerator to X")
+                elif split[0] == "r":
+                    try: 
+                        split1 = split[1]
+                        if split1 == "ts":
+                            if self.piece.removetimesignatureevent( self.currentabsoluteticks ):
+                                return self.wrapupcommand("no current time signature to remove")
+                            else:
+                                return self.wrapupcommand("removing current time signature")
+                                self.setcurrentticksandload( self.currentabsoluteticks )
+                        elif split1 == "t":
+                            if self.piece.removetempoevent( self.currentabsoluteticks ):
+                                return self.wrapupcommand("no current tempo to remove")
+                            else:
+                                return self.wrapupcommand("removing current tempo")
+                                self.setcurrentticksandload( self.currentabsoluteticks )
+                        elif split1 == "a":
+                            if self.addremovetext("") == -1:
+                                self.setcurrentticksandload(self.currentabsoluteticks)
+                                return self.wrapupcommand("removing annotation")
+                            else:
+                                return self.wrapupcommand("no annotation to remove")
+                        else:
+                            raise IndexError
+                    except IndexError:
+                        return self.wrapupcommand("use \"r t|ts|a\" to remove tempo|timesignature|annotation")
+                elif split[0] == "i":
+                    i = None
+                    try:
+                        i = int(split[1])
+                    except ValueError:
+                        try:
+                            i = config.INSTRUMENT[split[1]]
+                        except KeyError:
+                            pass
+                    except IndexError:
+                        return self.wrapupcommand("use \"i X\" to set track instrument to X")
+                    
+                    if i == None:
+                        return self.wrapupcommand( "unknown instrument" )
+                    elif i == "drums":
+                        self.piece.setchannel( midi, self.currenttrack, 9 )
+                        return self.wrapupcommand( "setting track to drums (channel 9)" )
+                    else:
+                        if i < 0:
+                            i = 0
+                        elif i > 127:
+                            i = 127
+                        self.piece.setinstrument( midi, self.currenttrack, i )
+                        return self.wrapupcommand( "setting instrument to "+str(i) )
+
+                elif split[0] == "a":
+                    text = " ".join(split[1:])
+                    result = self.addremovetext( text )
+                    currentticks = self.roundtonoteticks( self.currentabsoluteticks )
+                    self.setcurrentticksandload(currentticks)
+                    if result == 1:
+                        return self.wrapupcommand("Added annotation")
+                    elif result == -1:
+                        return self.wrapupcommand("Removed annotation")
+                    else:
+                        return self.wrapupcommand("No annotation to remove here")
+                
+                elif split[0] == "e":
+                    track = None
+                    try:
+                        track = int(split[1])
+                        
+                        if track == self.currenttrack:
+                            return self.wrapupcommand("you are editing track "+str(track)+" already")
+                        else:
+                            if track < 0:
+                                track = 0
+                                return self.wrapupcommand("editing track 0 (no negatives)")
+                            elif track >= len(self.piece.notes): 
+                                track = len(self.piece.notes)
+                                self.addtrack()
+                                return self.wrapupcommand("adding track, editing "+str(track))
+                            else:
+                                return self.wrapupcommand("editing track "+str(track))
+                            
+                            # switch from one track to another
+#                                    self.trackticks[self.currenttrack] = self.currentabsoluteticks
+                            self.currenttrack = track
+                            self.setcurrentticksandload(self.currentabsoluteticks) #self.trackticks[track] )
+#                                    self.previousabsoluteticks = 0 
+                            
+                    except ValueError:
+                        return self.wrapupcommand( "unknown track to edit" )
+                elif self.readnotecode( command ):
+                    self.setcurrentticksandload( self.currentabsoluteticks )
+                    return self.wrapupcommand( "Set notecode to "+self.notecode )
+                else:
+                    # try to see if the command is an integer (for a line count)
+                    try:
+                        integer = int(split[0])
+                        newticks = self.currentnoteticks*integer
+                        if newticks != self.currentabsoluteticks:
+                            lastcurrentnoteticks = self.piece.notes[self.currenttrack][-1].absoluteticks
+                            lastmeasureticks = self.piece.getfloormeasureticks( lastcurrentnoteticks )
+                            if newticks != 0 and newticks != lastmeasureticks:
+                                self.previousabsoluteticks = self.currentabsoluteticks
+
+                            self.setcurrentticksandload( newticks )
+                            
+                        return self.wrapupcommand("at line "+str(integer))
+                        
+                    except (IndexError, ValueError):
+                        return self.wrapupcommand( "unknown command: "+command )
+
+        self.setstate( state=self.NAVIGATIONstate  )
+        return { "printme" : "back to navigation" }
 
     def wrapupcommand( self, alert ):
-        if len(self.commandlist):
-            if self.commandlist[0] != self.command:
-                self.commandlist.appendleft(self.command)
-        else:
-            self.commandlist.appendleft(self.command)
-        self.commandlistindex = -1
         self.setstate( state=self.NAVIGATIONstate  )
         self.setalert( alert )
-        self.command = ""
+        return { "printme" : alert }
 
 #### EDIT CLASS
     def processmidi( self, midi ):
@@ -1014,14 +720,12 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                     self.sethelperlines( self.state )
                 return 1
             elif ( event.key == pygame.K_SLASH ):
-                self.listeningfortext = True
-                self.askingfor = "search help"
-                self.listeningact = self.searchhelp
+                self.preemptor = self.preemptorlist["search help"]
                 self.setalert("Search in help.")
                 return 1
             elif ( event.key == pygame.K_n ):
                 if self.lasthelpsearched:
-                    self.searchhelp( self.lasthelpsearched, 
+                    self.searchhelp( self.lasthelpsearched, midi,
                         pygame.key.get_mods() & pygame.KMOD_SHIFT )
                 else:
                     self.setalert("Try ctrl+/ to search help.")
@@ -1036,7 +740,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
         return self.piece.addremovetextevent( text, self.roundtonoteticks( self.currentabsoluteticks ),
             self.currenttrack )
 
-    def searchhelp( self, text, gobackwards=0 ):
+    def searchhelp( self, text, midi, gobackwards=0 ):
         self.lasthelpsearched = text
         if not gobackwards:
             originalindex = self.helper[self.state][0]
@@ -1091,6 +795,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                     self.setalert("Wrapped, found text in help.")
                 else:
                     self.setalert("Text not found in help.")
+        return { "printme" : "Searching help for "+text }
     
     def addmidinote( self, note ):
         if note.velocity:
@@ -1615,29 +1320,34 @@ class EditClass( DDRClass ): # inherit from the DDRClass
         else:
             self.setalert("No notes in clipboard.")
     
-    def addquickchordinselection( self, text ):
-        colonindex = text.find(";")
-        if colonindex < 0:
-            chordtext = text
-            arptext = ""
-        else:
-            chordtext = text[0:colonindex]
-            arptext = text[colonindex+1:]
-            
-        try:
-            chordlist = CHORDS.from_shorthand(chordtext)
-        except:
-            self.setalert("Unknown chord.")
-            chordlist = []
-            
-        if chordlist:
-            for i in range(len(chordlist)):
-                chordlist[i] = NOTES.note_to_int(chordlist[i])
-            
-            tickmin, tickmax, midimin, midimax = self.getselectionregion()
-            self.addchordinregion( chordlist, [tickmin,tickmax], [midimin,midimax], arptext ) 
-            self.setcurrentticksandload( self.currentabsoluteticks )
-            #self.anchor = 0
+    def addquickchordinselection( self, text, midi ):
+        if text:
+            colonindex = text.find(";")
+            if colonindex < 0:
+                chordtext = text
+                arptext = ""
+            else:
+                chordtext = text[0:colonindex]
+                arptext = text[colonindex+1:]
+                
+            try:
+                chordlist = CHORDS.from_shorthand(chordtext)
+            except:
+                self.setalert("Unknown chord.")
+                chordlist = []
+                
+            if chordlist:
+                for i in range(len(chordlist)):
+                    chordlist[i] = NOTES.note_to_int(chordlist[i])
+                chordlist = list(set(chordlist))
+                chordlist.sort()
+                
+                tickmin, tickmax, midimin, midimax = self.getselectionregion()
+                self.addchordinregion( chordlist, [tickmin,tickmax], [midimin,midimax], arptext ) 
+                self.setcurrentticksandload( self.currentabsoluteticks )
+                #self.anchor = 0
+        self.setstate( state=self.NAVIGATIONstate )
+        return {}
 
     def addchordinregion( self, chordlist, tickrange, midirange, arpeggio="" ):
         if arpeggio == "":
@@ -1713,7 +1423,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                         else:
                             octave = resetoctave
 
-                self.setalert("Upward arpeggio")
+                self.setalert("Arpeggio of type "+arpeggio)
             else:
                 self.setalert("Arpeggio doesn't fit here")
         
@@ -1721,7 +1431,9 @@ class EditClass( DDRClass ): # inherit from the DDRClass
 #### EDIT CLASS 
 
     def draw( self, screen ):
-        if self.state == self.NAVIGATIONstate or self.state == self.COMMANDstate:
+        if ( self.state == self.NAVIGATIONstate 
+          or self.state == self.COMMANDstate or self.state == self.CHORDstate ):
+            # draw the cursor if in one of those states:
             self.keymusic.setcursorheight( self.currentnoteticks*self.pixelspertick )
 
             if self.anchor:
@@ -1738,25 +1450,12 @@ class EditClass( DDRClass ): # inherit from the DDRClass
         #draw keyboard and music
         self.keymusic.draw( screen )
         
-        if self.listeningfortext:
-            fontandsize = pygame.font.SysFont(self.commandfont, self.commandfontsize)
-            listenerlabel = fontandsize.render( self.askingfor + ": " + self.listeningmessage, 
-                                                1, self.commandfontcolor )
-            listenerbox = listenerlabel.get_rect()
-            listenerbox.left = 10
-            listenerbox.bottom = screen.get_height() - 10
-            pygame.draw.rect( screen, self.commandbackcolor, listenerbox )
-            screen.blit( listenerlabel, listenerbox )
-
+        if self.preemptor:
+            self.preemptor.draw( screen )
         elif self.state == self.COMMANDstate: 
-            fontandsize = pygame.font.SysFont(self.commandfont, self.commandfontsize)
-            commandlabel = fontandsize.render( "cmd: " + self.command, 
-                                                1, self.commandfontcolor )
-            commandbox = commandlabel.get_rect()
-            commandbox.left = 10
-            commandbox.bottom = screen.get_height() - 10
-            pygame.draw.rect( screen, self.commandbackcolor, commandbox )
-            screen.blit( commandlabel, commandbox )
+            self.commander.draw( screen )
+        elif self.state == self.CHORDstate: 
+            self.chordcommander.draw( screen )
 
         if len(self.helperlines):
             #screenwidth, screenheight = screen.get_size()

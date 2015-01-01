@@ -4,6 +4,7 @@ p1
 (lp2
 F40320.0
 aF39690.0
+aF221760.0
 asS'Metronome'
 p3
 I00

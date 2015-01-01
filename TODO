@@ -74,21 +74,13 @@ maybe ctrl+shift+/  - search all help boxes.
 
 ## quick-insert (q)
 
-in select mode, where a visual block is highlighted (notes > 5):
-q, will give a quick prompt, asks for key.
-    C7 = major C with 7.  C E G B
-    c7 = minor C with 7.  C Eb G B
-    G = G chord = G B D
-    etc.
-then it will add in those notes in that selection.
+switch to command form, have help menu
 
-you can also augment:
-    C/  = ascending arpeggio in C major
-    C// = two ascending arpeggios, back to back
-    C\  = descending arpeggio
-    C/\ = ascend and descend
-    C~  = random arpeggio
-arpeggio's will include notes of the current note-length.
+
+## scale:
+
+command mode
+scale selected notes by some factor
 
 
 ## make cursor able to have a nonzero y value
@@ -98,10 +90,7 @@ will need to change currentabsoluteticks to cursorabsoluteticks
 in a variety of spots (not everywhere)
 
 
-## scale:
-
-command mode
-scale selected notes by some factor
+##
 
 
 ## metapiece
@@ -111,9 +100,12 @@ make editting difficulties possible
 
 ## loading a song
 
-maybe:
-no "edit choice menu" -- make player load from ddr-edit command line.
+on the command line in EDIT:
 
+"load composer/album/song" to create new song / load it if it exists.
+try to keep note clipboard permanent through it, in case they want to copy.
+
+maybe allow for tab completion here.
 
 ## helpful stuff for play mode:
 
