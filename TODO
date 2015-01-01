@@ -4,6 +4,7 @@
 ## getting a visual block, then pressing HOME or END
 
 does not show the visual block, but it is active somehow.
+also just moving a little far over messes things up, too.
 
 
 ## changing instrument on one song affects other songs using defaults
@@ -19,7 +20,10 @@ or whatever instrument you like, for your song.
 ## switching time signatures
 
 can do a little weird things with how the measure ticks
-are displayed (and subdivisions).
+are displayed (and subdivisions).  
+
+see if we can't round to note ticks better
+sometimes when things are offset, too.
 
 
 
@@ -37,14 +41,6 @@ UPDATE:
 I think this is fixed.  
 needed to "carveoutregion" with a little extra EDITnotespace
 when adding notes without violent paste.
-
-
-## choosing difficulty in play mode is wonky
-
-Need to grab only midi files from piece directory.
-
-UPDATE:
-also probably fixed.  in 'getpiecesettings', needed to look for .mid files only.
 
 
 
@@ -72,11 +68,6 @@ ctrl+/  -   search help box
 maybe ctrl+shift+/  - search all help boxes.
 
 
-## quick-insert (q)
-
-switch to command form, have help menu
-
-
 ## scale:
 
 command mode
@@ -88,9 +79,6 @@ scale selected notes by some factor
 so that you can see what's immediately behind you.
 will need to change currentabsoluteticks to cursorabsoluteticks
 in a variety of spots (not everywhere)
-
-
-##
 
 
 ## metapiece
@@ -195,6 +183,3 @@ press T to trim as above, but to delete any notes which would round down to zero
 # REFACTORING CODE
 ================================================
 
-## make a class which combines commands with their history
-
-for both search functionality and command mode

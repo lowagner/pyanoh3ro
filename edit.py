@@ -93,7 +93,8 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                    "        m   merge notes under cursor",
                    "        M   merge with next note",
                    "      e|E   extend notes by half|full grid duration",
-                   "      s|S   shorten notes by half|quarter",
+                   "        s   shorten note duration by half",
+                   "        S   scale selected region (prompts for factor)",
                    "",
                    "  PgUp|Dn   move up|down by one screen",
                    " HOME|END   move all the way left|right",
@@ -183,7 +184,8 @@ class EditClass( DDRClass ): # inherit from the DDRClass
         
         self.preemptor = None
         self.preemptingfor = { 
-            "search help" : CommandClass( self.searchhelp, "search help" )
+            "search help" : CommandClass( self.searchhelp, "search help" ),
+            "scale factor" : CommandClass( self.scalecursorselection, "scale factor" )
         }
 
         self.anchor = 0 #will go to [ midinote, anchorposition ]
@@ -296,7 +298,11 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                     pygame.key.get_mods() & pygame.KMOD_CTRL )
             
             elif event.key == pygame.K_s:
-                self.shortencursorselection( pygame.key.get_mods() & pygame.KMOD_SHIFT )
+                if pygame.key.get_mods() & pygame.KMOD_SHIFT:
+                    self.setalert("Scale selected notes")
+                    self.preemptor = self.preemptingfor[ "scale factor" ]
+                else:
+                    self.shortencursorselection()
             
             elif event.key == pygame.K_e:
                 self.extendcursorselection( pygame.key.get_mods() & pygame.KMOD_SHIFT )
@@ -739,63 +745,6 @@ class EditClass( DDRClass ): # inherit from the DDRClass
     def addremovetext( self, text ):
         return self.piece.addremovetextevent( text, self.roundtonoteticks( self.currentabsoluteticks ),
             self.currenttrack )
-
-    def searchhelp( self, text, midi, gobackwards=0 ):
-        self.lasthelpsearched = text
-        if not gobackwards:
-            originalindex = self.helper[self.state][0]
-            success = False
-            i = originalindex+1
-            while i < len(self.helper[self.state][1]):
-                if text in self.helper[self.state][1][i]:
-                    self.helper[self.state][0] = i        
-                    success = True
-                    break
-                i += 1
-            if success:
-                self.sethelperlines( self.state )
-                self.setalert("Text found in help." )
-            else:
-                i = 0
-                while i <= originalindex:
-                    if text in self.helper[self.state][1][i]:
-                        self.helper[self.state][0] = i        
-                        success = True
-                        break
-                    i += 1
-                if success:
-                    self.sethelperlines( self.state )
-                    self.setalert("Wrapped, found text in help.")
-                else:
-                    self.setalert("Text not found in help.")
-        else:
-            # going backwards
-            originalindex = self.helper[self.state][0]
-            success = False
-            i = originalindex-1
-            while i >= 0:
-                if text in self.helper[self.state][1][i]:
-                    self.helper[self.state][0] = i        
-                    success = True
-                    break
-                i -= 1
-            if success:
-                self.sethelperlines( self.state )
-                self.setalert("Text found in help." )
-            else:
-                i = len(self.helper[self.state][1])-1
-                while i > originalindex:
-                    if text in self.helper[self.state][1][i]:
-                        self.helper[self.state][0] = i        
-                        success = True
-                        break
-                    i -= 1
-                if success:
-                    self.sethelperlines( self.state )
-                    self.setalert("Wrapped, found text in help.")
-                else:
-                    self.setalert("Text not found in help.")
-        return { "printme" : "Searching help for "+text }
     
     def addmidinote( self, note ):
         if note.velocity:
@@ -1085,7 +1034,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
         tickmin,tickmax, midimin, midimax = self.selectcursorselection()
         # we have a selection going...
         self.piece.deletenotes( self.selectednotes, self.currenttrack )
-        
+        success = False 
         i = 0
         while i < len(self.selectednotes):
             notei = self.selectednotes[i]
@@ -1097,6 +1046,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                     # duration of note j (notej[3]) plus difference in ticks from i to j:
                     notei[3] = notej[3] + (notej[2] - notei[2]) 
                     del self.selectednotes[j]
+                    success = True
                     # would like to "break" here but cannot.  must look at all possible futures.
                 else: 
                     j += 1
@@ -1104,11 +1054,13 @@ class EditClass( DDRClass ): # inherit from the DDRClass
        
         if self.selectednotes:
             if not aggressive:
-                alerttxt = "Merged notes in "
+                if success:
+                    alerttxt = "Merged notes in "
+                else:
+                    alerttxt = "No notes to merge in "
                 for note in self.selectednotes:
                     self.piece.addnote( note[0],note[1],note[2],note[3], self.currenttrack )
             else:
-                alerttxt = "Attempted a merge next in "
                 for note in self.selectednotes:
                     midinote = MIDI.NoteOnEvent( pitch=note[0], velocity=note[1] )
                     midinote.absoluteticks = note[2]
@@ -1120,6 +1072,13 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                         midinote = MIDI.NoteOffEvent( pitch=note[0] )
                         midinote.absoluteticks = note[2]+note[3]
                         self.addmidinote( midinote )
+                    else:
+                        success = True
+
+                if success:
+                    alerttxt = "Merged next notes in "
+                else:
+                    alerttxt = "No next notes to merge in "
 
             self.setcurrentticksandload( self.currentabsoluteticks )
             if config.SMALLalerts: 
@@ -1165,6 +1124,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                     str(midimax-midimin+1)+" columns")
         else:
             self.setalert("No notes to shorten here.")
+    
     
     def extendcursorselection( self, aggressive=False ):
         # quick delete
@@ -1319,35 +1279,6 @@ class EditClass( DDRClass ): # inherit from the DDRClass
             self.setcurrentticksandload( self.currentabsoluteticks )
         else:
             self.setalert("No notes in clipboard.")
-    
-    def addquickchordinselection( self, text, midi ):
-        if text:
-            colonindex = text.find(";")
-            if colonindex < 0:
-                chordtext = text
-                arptext = ""
-            else:
-                chordtext = text[0:colonindex]
-                arptext = text[colonindex+1:]
-                
-            try:
-                chordlist = CHORDS.from_shorthand(chordtext)
-            except:
-                self.setalert("Unknown chord.")
-                chordlist = []
-                
-            if chordlist:
-                for i in range(len(chordlist)):
-                    chordlist[i] = NOTES.note_to_int(chordlist[i])
-                chordlist = list(set(chordlist))
-                chordlist.sort()
-                
-                tickmin, tickmax, midimin, midimax = self.getselectionregion()
-                self.addchordinregion( chordlist, [tickmin,tickmax], [midimin,midimax], arptext ) 
-                self.setcurrentticksandload( self.currentabsoluteticks )
-                #self.anchor = 0
-        self.setstate( state=self.NAVIGATIONstate )
-        return {}
 
     def addchordinregion( self, chordlist, tickrange, midirange, arpeggio="" ):
         if arpeggio == "":
@@ -1426,7 +1357,162 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                 self.setalert("Arpeggio of type "+arpeggio)
             else:
                 self.setalert("Arpeggio doesn't fit here")
-        
+    
+    def addquickchordinselection( self, text, midi ):
+        if text:
+            colonindex = text.find(";")
+            if colonindex < 0:
+                chordtext = text
+                arptext = ""
+            else:
+                chordtext = text[0:colonindex]
+                arptext = text[colonindex+1:]
+                
+            try:
+                chordlist = CHORDS.from_shorthand(chordtext)
+            except:
+                self.setalert("Unknown chord.")
+                chordlist = []
+                
+            if chordlist:
+                for i in range(len(chordlist)):
+                    chordlist[i] = NOTES.note_to_int(chordlist[i])
+                chordlist = list(set(chordlist))
+                chordlist.sort()
+                
+                tickmin, tickmax, midimin, midimax = self.getselectionregion()
+                self.addchordinregion( chordlist, [tickmin,tickmax], [midimin,midimax], arptext ) 
+                self.setcurrentticksandload( self.currentabsoluteticks )
+                #self.anchor = 0
+        self.setstate( state=self.NAVIGATIONstate )
+        return {}
+    
+    def scalecursorselection( self, text, midi ):
+        if text:
+            slashindex=text.find("/")
+            numerator = 1
+            denominator = 1
+            if slashindex >= 0:
+                try:
+                    numerator = int(text[:slashindex])
+                except:
+                    print "warning, unknown numerator"
+                    numerator = 1
+                try:
+                    denominator = int(text[slashindex+1:])
+                except:
+                    print "warning, unknown denominator"
+                    denominator = 1
+            else:
+                dotindex = text.find(".")
+                if dotindex >= 0:
+                    if text[dotindex:] == ".5":
+                        try:
+                            numerator = int(text[:dotindex])*2+1
+                        except:
+                            print "warning, unknown scale factor"
+                            numerator = 1
+                        denominator = 2
+                    else:
+                        try:
+                            numerator = float(text)
+                        except:
+                            print "warning, unknown scale factor"
+                            numerator = 1
+                else:
+                    try:
+                        numerator = int(text)
+                    except:
+                        print "warning, unknown scale factor"
+            
+            if numerator == 1 and denominator == 1:
+                self.setalert("No scaling applied.")
+            else:
+                # quick delete
+                tickmin,tickmax, midimin, midimax = self.selectcursorselection()
+                # we have a selection going...
+                self.piece.deletenotes( self.selectednotes, self.currenttrack )
+                
+                if self.selectednotes:
+                    alerttxt = "Scaled notes by "+str(numerator)
+                    if denominator != 1:
+                        alerttxt += "/"+str(denominator)
+
+                    for note in self.selectednotes:
+                        # scale position relative to initial selection:
+                        note[2] = int(tickmin + numerator*(note[2]-tickmin)/denominator)
+                        # scale duration:
+                        note[3] += config.EDITnotespace
+                        note[3] = int(numerator*note[3]/denominator)
+                        if note[3] <= config.EDITshortestnote:
+                            note[3] = config.EDITshortestnote
+                        note[3] -= config.EDITnotespace
+                        self.addnote( note[0],note[1],note[2],note[3] )
+
+                    self.setcurrentticksandload( self.currentabsoluteticks )
+                    self.setalert( alerttxt )
+                else:
+                    self.setalert("No notes to scale here.")
+
+        self.setstate( state=self.NAVIGATIONstate )
+        return { "printme" : "Attempted scaling" }        
+
+    def searchhelp( self, text, midi, gobackwards=0 ):
+        self.lasthelpsearched = text
+        if not gobackwards:
+            originalindex = self.helper[self.state][0]
+            success = False
+            i = originalindex+1
+            while i < len(self.helper[self.state][1]):
+                if text in self.helper[self.state][1][i]:
+                    self.helper[self.state][0] = i        
+                    success = True
+                    break
+                i += 1
+            if success:
+                self.sethelperlines( self.state )
+                self.setalert("Text found in help." )
+            else:
+                i = 0
+                while i <= originalindex:
+                    if text in self.helper[self.state][1][i]:
+                        self.helper[self.state][0] = i        
+                        success = True
+                        break
+                    i += 1
+                if success:
+                    self.sethelperlines( self.state )
+                    self.setalert("Wrapped, found text in help.")
+                else:
+                    self.setalert("Text not found in help.")
+        else:
+            # going backwards
+            originalindex = self.helper[self.state][0]
+            success = False
+            i = originalindex-1
+            while i >= 0:
+                if text in self.helper[self.state][1][i]:
+                    self.helper[self.state][0] = i        
+                    success = True
+                    break
+                i -= 1
+            if success:
+                self.sethelperlines( self.state )
+                self.setalert("Text found in help." )
+            else:
+                i = len(self.helper[self.state][1])-1
+                while i > originalindex:
+                    if text in self.helper[self.state][1][i]:
+                        self.helper[self.state][0] = i        
+                        success = True
+                        break
+                    i -= 1
+                if success:
+                    self.sethelperlines( self.state )
+                    self.setalert("Wrapped, found text in help.")
+                else:
+                    self.setalert("Text not found in help.")
+        return { "printme" : "Searching help for "+text }
 
 #### EDIT CLASS 
 

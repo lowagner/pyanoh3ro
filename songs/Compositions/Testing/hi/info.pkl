@@ -2,7 +2,8 @@
 S'BookmarkTicks'
 p1
 (lp2
-sS'Metronome'
+F120960.0
+asS'Metronome'
 p3
 I00
 sS'PlayerTrack'
