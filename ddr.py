@@ -241,10 +241,40 @@ class DDRClass( GameChunkClass ):
         if timesig != self.currenttimesignature:
             self.currenttimesignature = timesig
 
-    def setcurrentticksandload( self, absoluteticks ):
+    def setcurrentticksandload( self, absoluteticks, dontround=True ):
         ''' this method erases all current notes and sets the current position to absoluteticks'''
         if absoluteticks < 0:
             absoluteticks = 0
+            if not dontround:
+                self.currentnoteoffset = 0
+        elif not dontround:
+            # we are supposed to round, but check for offset
+            newabsoluteticks = self.roundtonoteticks( absoluteticks )
+            oldoffset = self.currentnoteoffset
+
+            ts, index = self.piece.gettimesignature( newabsoluteticks )
+            noteticks, noteoffset = self.getticks(ts)
+            if newabsoluteticks > absoluteticks:
+                if newabsoluteticks - absoluteticks < 0.25*noteticks:
+                    self.currentnoteoffset = 0
+                else:
+                    self.currentnoteoffset = 0.5*noteticks
+            elif newabsoluteticks < absoluteticks:
+                if absoluteticks - newabsoluteticks < 0.25*noteticks:
+                    self.currentnoteoffset = 0
+                else:
+                    self.currentnoteoffset = 0.5*noteticks
+            else:
+                self.currentnoteoffset = 0
+           
+            if oldoffset != self.currentnoteoffset:
+                # make sure we re-round to nearest tick offset
+                absoluteticks = self.roundtonoteticks(absoluteticks)
+            else:
+                # otherwise old rounding was ok
+                absoluteticks = newabsoluteticks
+                    
+            
         # clear everything
         self.keymusic.clearallmusic()
         self.readynotes = []
@@ -790,7 +820,7 @@ class DDRClass( GameChunkClass ):
                 notecode = "n/"+str(2**(event.key-55))
                 
             self.readnotecode( notecode )
-            self.setcurrentticksandload( self.currentabsoluteticks )
+            self.setcurrentticksandload( self.currentabsoluteticks, self.play )
             self.setalert( "Note grid set to "+self.notecode )
             return 1
         elif event.key == 45: # - ???   HELP may need to switch with 61.
@@ -821,7 +851,7 @@ class DDRClass( GameChunkClass ):
                     notecode = "n/"+str(self.notedivider+1)
                     
             self.readnotecode( notecode )
-            self.setcurrentticksandload( self.currentabsoluteticks )
+            self.setcurrentticksandload( self.currentabsoluteticks, self.play )
             self.setalert( "Note grid set to "+self.notecode )
             return 1
         elif event.key == 61: # + ???
@@ -848,7 +878,7 @@ class DDRClass( GameChunkClass ):
                 else:
                     notecode = str(self.notemultiplier+1)+"n"
             self.readnotecode( notecode )
-            self.setcurrentticksandload( self.currentabsoluteticks )
+            self.setcurrentticksandload( self.currentabsoluteticks, self.play )
             self.setalert( "Note grid set to "+self.notecode )
             return 1
         return 0 
