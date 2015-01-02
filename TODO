@@ -1,6 +1,12 @@
 # KNOWN ISSUES
 ================================================
 
+## switching from one time grid duration to a larger one:
+
+sometimes should probably offset the time grid, if you're in
+the middle of the coarser grid.
+
+
 ## getting a visual block, then pressing HOME or END
 
 does not show the visual block, but it is active somehow.
