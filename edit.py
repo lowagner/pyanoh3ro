@@ -122,7 +122,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                    "   clear    clears the piece",
                    "",
                    "    Nm/D    set time grid to N/D times measure length ",
-                   "    Nn/D    set grid to N/D times quarter note length ",
+                   "    Nb/D    set grid to N/D times one beat length ",
                    "",
                    "     t X    set current tempo to X (10 to 300, in bpm)",
                    "    ts X    set time signature to X (beats per measure)",
@@ -134,6 +134,8 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                    "     i X    change track instrument to X",
                    "            X can be a number (0 to 127), or a name",
                    "     v X    set quick-input velocity to X (0 to 127)",
+                   "     o X    open difficulty X",
+                   "    co X    copy over notes to difficulty X (and open X)",
                    ]
                ],
             self.INSERTstate : [ 0, #start line
@@ -614,22 +616,73 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                         else:
                             if track < 0:
                                 track = 0
-                                return self.wrapupcommand("editing track 0 (no negatives)")
+                                wrapuptxt = "editing track 0 (no negatives)"
                             elif track >= len(self.piece.notes): 
                                 track = len(self.piece.notes)
                                 self.addtrack()
-                                return self.wrapupcommand("adding track, editing "+str(track))
+                                wrapuptxt = "adding track, editing "+str(track)
                             else:
-                                return self.wrapupcommand("editing track "+str(track))
+                                wrapuptxt = "editing track "+str(track)
                             
                             # switch from one track to another
 #                                    self.trackticks[self.currenttrack] = self.currentabsoluteticks
                             self.currenttrack = track
                             self.setcurrentticksandload(self.currentabsoluteticks) #self.trackticks[track] )
+                            return self.wrapupcommand( wrapuptxt )
 #                                    self.previousabsoluteticks = 0 
                             
                     except ValueError:
                         return self.wrapupcommand( "unknown track to edit" )
+
+                elif split[0] == "o":
+                    difficulty = None
+                    try:
+                        difficulty = int(split[1])
+                        
+                        if difficulty == self.piece.settings["Difficulty"]:
+                            return self.wrapupcommand("you are on difficulty "+str(difficulty)+" already")
+                        else:
+                            if difficulty < 0:
+                                difficulty = 0
+                                wrapuptxt = "opening difficulty 0 (no negatives)"
+                            elif difficulty > 9:
+                                difficulty = 9
+                                wrapuptxt = "no difficulty greater than 9"
+                            else:
+                                wrapuptxt = "opening difficulty "+str(difficulty)
+                            
+                            self.piece.loaddifficulty( midi, difficulty )
+                            self.setcurrentticksandload(self.currentabsoluteticks) 
+                            return self.wrapupcommand( wrapuptxt )
+                            
+                    except ValueError:
+                        return self.wrapupcommand( "unknown difficulty to open" )
+                
+                elif split[0] == "co":
+                    # switch over to difficulty x but keep the current notes.
+
+                    difficulty = None
+                    try:
+                        difficulty = int(split[1])
+                        
+                        if difficulty == self.piece.settings["Difficulty"]:
+                            return self.wrapupcommand("you are on difficulty "+str(difficulty)+" already")
+                        else:
+                            if difficulty < 0:
+                                difficulty = 0
+                                wrapuptxt = "copying over to difficulty 0 (no negatives)"
+                            elif difficulty > 9:
+                                difficulty = 9
+                                wrapuptxt = "copying over to difficulty 9 (nothing greater)"
+                            else:
+                                wrapuptxt = "copying over to difficulty "+str(difficulty)
+                            
+                            self.piece.setdifficulty( difficulty )
+                            return self.wrapupcommand( wrapuptxt )
+                            
+                    except ValueError:
+                        return self.wrapupcommand( "unknown difficulty to open" )
+
                 elif self.readnotecode( command ):
                     self.setcurrentticksandload( self.currentabsoluteticks )
                     return self.wrapupcommand( "Set notecode to "+self.notecode )

@@ -101,7 +101,7 @@ class DDRClass( GameChunkClass ):
                 i += 1
 
         # duration of the time grid increment (the current note length)
-        self.readnotecode("n")
+        self.readnotecode("b")
         # the above sets self.notecode:
         #self.notecode = "n"    # 1n 2n 3n, ..., n/1, n/2, n/3, ...  "note" (beat)
                                 # 1m 2m 3m, ..., m/1, m/2, m/3, ...  "measure"
@@ -122,20 +122,20 @@ class DDRClass( GameChunkClass ):
         # try to find the note duration based on the notecode
         # and some other stuff.
         notecode = notecode.replace(" ","") # remove all white space
-        nindex = notecode.find("n")
+        nindex = notecode.find("b")
         notemultiplier = 1
         notedivider = 1
-        notebase = "n"          # default to one beat
+        notebase = "b"          # default to one beat
         warning = False
         if nindex >= 0:
-            # "n" is in notecode:
+            # "b" is in notecode:
             if len(notecode) > 1:
                 if nindex > 0:
                     try:
                         notemultiplier = int( notecode[:nindex] )
                     except:
                         warning = True
-                print "note mult = ", notemultiplier
+                #print "note mult = ", notemultiplier
                 divideindex = notecode.find("/")
                 if divideindex < 0:
                     # no divider
@@ -149,7 +149,7 @@ class DDRClass( GameChunkClass ):
                     warning = True
             else:
                 # this is default.
-                # notecode = "n" -> notebase = "n", notemultiplier, notedivider = 1
+                # notecode = "b" -> notebase = "b", notemultiplier, notedivider = 1
                 pass
         else:
             # "n" is NOT in notecode.
@@ -567,7 +567,9 @@ class DDRClass( GameChunkClass ):
     
     def commonnav( self, event, midi ):
         if event.key == pygame.K_w:
-            self.setalert("Playing track "+str(self.currenttrack))
+            self.setalert(
+                "Playing track "+str(self.currenttrack)+
+                " on difficulty "+str(self.piece.settings["Difficulty"]) )
             print "ready ", self.readynotes
             print "selecting ", self.selectednotes
         elif event.key == pygame.K_h or event.key == pygame.K_LEFT: # press left 
@@ -810,14 +812,14 @@ class DDRClass( GameChunkClass ):
         if event.key >= 48 and event.key < 58: # numbers 1 (ascii 49) through 9 (ascii 57)
             # number 1 = longest note duration, 2 = shorter note, ...
             self.currentnoteoffset = 0
-            notecode = "n"
+            notecode = "b"
             if event.key == 48: # 0
-                notecode = "n/8"
+                notecode = "b/8"
             elif event.key <= 54: # 1 through 6
                 notecode = "m/"+str(event.key-48)
             else:   
                 # ascii 55 = 7, and 9 = ascii 57.  
-                notecode = "n/"+str(2**(event.key-55))
+                notecode = "b/"+str(2**(event.key-55))
                 
             self.readnotecode( notecode )
             self.setcurrentticksandload( self.currentabsoluteticks, self.play )
@@ -833,7 +835,7 @@ class DDRClass( GameChunkClass ):
                     else:
                         notecode = str(self.notemultiplier-1)+"m"
                 elif self.notedivider > 8:  # completely arbitrary when to switch
-                    notecode = "n"          # over to quarter notes.
+                    notecode = "b"          # over to quarter notes.
                 else:
                     notecode = "m/"+str(self.notedivider+1)
             else:
@@ -841,14 +843,14 @@ class DDRClass( GameChunkClass ):
                 if self.notemultiplier > 1:
                     # clean up the notation:
                     if self.notedivider > 1:
-                        notecode = str(self.notemultiplier-1)+"n/"+str(self.notedivider)
+                        notecode = str(self.notemultiplier-1)+"b/"+str(self.notedivider)
                     else:
-                        notecode = str(self.notemultiplier-1)+"n"
+                        notecode = str(self.notemultiplier-1)+"b"
                 elif self.notedivider >= 15:
                     # this is the smallest unit
-                    notecode = "n/16"
+                    notecode = "b/16"
                 else:
-                    notecode = "n/"+str(self.notedivider+1)
+                    notecode = "b/"+str(self.notedivider+1)
                     
             self.readnotecode( notecode )
             self.setcurrentticksandload( self.currentabsoluteticks, self.play )
@@ -870,13 +872,13 @@ class DDRClass( GameChunkClass ):
                 # increase note duration from beat base unit
                 if self.notedivider > 1:  
                     if self.notemultiplier > 1:
-                        notecode = str(self.notemultiplier)+"n/"+str(self.notedivider-1)
+                        notecode = str(self.notemultiplier)+"b/"+str(self.notedivider-1)
                     else:
-                        notecode = "n/"+str(self.notedivider-1)
+                        notecode = "b/"+str(self.notedivider-1)
                 elif self.notemultiplier >= 8:   # completely arbitrary.
                     notecode = "m"   # switch over to measures when note gets too big.
                 else:
-                    notecode = str(self.notemultiplier+1)+"n"
+                    notecode = str(self.notemultiplier+1)+"b"
             self.readnotecode( notecode )
             self.setcurrentticksandload( self.currentabsoluteticks, self.play )
             self.setalert( "Note grid set to "+self.notecode )

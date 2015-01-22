@@ -73,10 +73,20 @@ class PieceClass:
         
         if os.path.isfile( self.piecedir ) or not os.path.isdir( self.piecedir ):
             Error("Piece "+self.piecedir+" should be a directory...")
-
-        difficultystring = str( self.settings["Difficulty"] )
-        self.midifile = os.path.join( self.piecedir, self.settings["Name"]+difficultystring+".mid" )
+        
         self.infofile = os.path.join( self.piecedir, "info.pkl" )       
+
+        self.loaddifficulty( iomidi, self.settings["Difficulty"] )
+
+    def setdifficulty( self, difficulty ):
+        self.settings["Difficulty"] = difficulty
+        difficultystring = str( difficulty )
+        self.midifile = os.path.join( self.piecedir, self.settings["Name"]+difficultystring+".mid" )
+
+    def loaddifficulty( self, iomidi, difficulty ):
+        self.setdifficulty( difficulty )
+
+        print "attempting to load ", self.midifile
 
         #self.pattern = midi.Pattern( resolution=config.EDITresolution )
         # track independent things:
