@@ -485,7 +485,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                 self.piece.settings["BookmarkTicks"] = self.bookmarkticks
                 self.piece.writeinfo()
                 self.piece.writemidi()
-                return self.wrapupcommand( self.piece.piecedir+" saved!" )
+                return self.wrapupcommand( self.piece.piecedir+"/"+str(self.piece.settings["Difficulty"])+" saved!" )
             elif command == "clear" or command == "reset":
                 midi.clearall()
                 self.piece.clear()

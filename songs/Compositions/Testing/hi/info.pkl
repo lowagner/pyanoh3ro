@@ -11,7 +11,7 @@ p4
 I0
 sS'Difficulty'
 p5
-I5
+I3
 sS'Sandbox'
 p6
 I1
@@ -21,10 +21,12 @@ I100
 sS'AllowedDifficulties'
 p8
 (lp9
-S'0'
+S'5'
 p10
-asS'Name'
+aS'0'
 p11
-S'hi'
+asS'Name'
 p12
+S'hi'
+p13
 s.

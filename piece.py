@@ -32,17 +32,17 @@ def getpiecesettings( piecedir ):
     difficulties = []
     for f in descendingdirectorycontents:
         if f[-4:] == ".mid":
-            difficulties.append( f[-5] )
+            difficulties.append( int(f[-5]) )
+    difficulties.sort()
+    settings["AllowedDifficulties"] = difficulties
+    settings["Difficulty"] = difficulties[0]
     
     if not "BookmarkTicks" in settings:
         settings["BookmarkTicks"] = [] 
     if not "Metronome" in settings:
         settings["Metronome"] = config.METRONOMEdefault
 
-    settings["AllowedDifficulties"] = difficulties
-
     settings["TempoPercent"] = 100
-    settings["Difficulty"] = difficulties[0]
     if "AllowedPlayerTracks" in settings:
         settings["PlayerTrack"] = settings["AllowedPlayerTracks"][0]
     else:

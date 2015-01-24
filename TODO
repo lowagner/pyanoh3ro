@@ -1,6 +1,18 @@
 # KNOWN ISSUES
 ================================================
 
+## difficulties with editing new difficulties:
+
+if new difficulty doesn't have same amount of tracks, currenttrack breaks things.
+
+probably should kill the "AllowedDifficulties" in the info.pkl.
+
+
+## resulting midi files, played with another program, sound low!
+
+need two offsets for some reason in config.py
+
+
 ## getting a visual block, then pressing HOME or END
 
 does not show the visual block, but it is active somehow.
