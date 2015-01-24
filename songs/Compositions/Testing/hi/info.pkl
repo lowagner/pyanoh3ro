@@ -21,12 +21,11 @@ I100
 sS'AllowedDifficulties'
 p8
 (lp9
-S'5'
-p10
-aS'0'
-p11
+I0
+aI3
+aI5
 asS'Name'
-p12
+p10
 S'hi'
-p13
+p11
 s.

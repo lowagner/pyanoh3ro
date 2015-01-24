@@ -786,14 +786,11 @@ class PieceClass:
         tracks[0] += self.texts[0][1:] + self.tempos+self.timesignatures+self.notes[0]
         # sort everything
         tracks[0].sort(key=operator.attrgetter('absoluteticks'))
-#        print "saving track0"
-#        print tracks[0]
 
         # then grab the instrument
         if self.channels[0] != 9 and self.instruments[0]:
             tracks[0].insert(0, MIDI.ProgramChangeEvent( value=self.instruments[0],
                             channel=self.channels[0]  ) )
-
 
         for i in range(1,len(self.notes)):
             # sort each track separately
@@ -860,15 +857,6 @@ class PieceClass:
         else:
             MIDI.write_midifile(filedir, newpattern)
         
-##        # recreate the pattern # probably unnecessary
-##        self.pattern = midi.Pattern( config.EDITresolution )
-##        for track in tracks:
-##            if tickdivisor > 1:
-##                for event in track:
-##                    event.tick *= tickdivisor
-##            # add tracks to the pattern
-##            self.pattern.apppend( track )
-
 ##  PIECE CLASS
 
     def gettimesignature( self, absoluteticks ):

@@ -544,21 +544,21 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                         return self.wrapupcommand("setting current time signature to "+str(ts) )
                     except (IndexError, ValueError):
                         return self.wrapupcommand("use \"ts X\" to set time signature numerator to X")
-                elif split[0] == "r":
+                elif split[0] == "r" or split[0] == "rm":
                     try: 
                         split1 = split[1]
                         if split1 == "ts":
                             if self.piece.removetimesignatureevent( self.currentabsoluteticks ):
                                 return self.wrapupcommand("no current time signature to remove")
                             else:
-                                return self.wrapupcommand("removing current time signature")
                                 self.setcurrentticksandload( self.currentabsoluteticks )
+                                return self.wrapupcommand("removing current time signature")
                         elif split1 == "t":
                             if self.piece.removetempoevent( self.currentabsoluteticks ):
                                 return self.wrapupcommand("no current tempo to remove")
                             else:
-                                return self.wrapupcommand("removing current tempo")
                                 self.setcurrentticksandload( self.currentabsoluteticks )
+                                return self.wrapupcommand("removing current tempo")
                         elif split1 == "a":
                             if self.addremovetext("") == -1:
                                 self.setcurrentticksandload(self.currentabsoluteticks)
@@ -652,10 +652,12 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                                 wrapuptxt = "opening difficulty "+str(difficulty)
                             
                             self.piece.loaddifficulty( midi, difficulty )
+                            if self.currenttrack >= len(self.piece.notes):
+                                self.currenttrack = 0
                             self.setcurrentticksandload(self.currentabsoluteticks) 
                             return self.wrapupcommand( wrapuptxt )
                             
-                    except ValueError:
+                    except (ValueError, IndexError):
                         return self.wrapupcommand( "unknown difficulty to open" )
                 
                 elif split[0] == "co":
@@ -680,7 +682,7 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                             self.piece.setdifficulty( difficulty )
                             return self.wrapupcommand( wrapuptxt )
                             
-                    except ValueError:
+                    except (ValueError, IndexError):
                         return self.wrapupcommand( "unknown difficulty to open" )
 
                 elif self.readnotecode( command ):
@@ -689,8 +691,9 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                 else:
                     # try to see if the command is an integer (for a line count)
                     try:
-                        integer = int(split[0])
-                        newticks = self.currentnoteticks*integer
+                        integer = int(command)
+                        self.currentnoteoffset = 0
+                        newticks = self.roundtonoteticks( self.currentnoteticks*integer )
                         if newticks != self.currentabsoluteticks:
                             lastcurrentnoteticks = self.piece.notes[self.currenttrack][-1].absoluteticks
                             lastmeasureticks = self.piece.getfloormeasureticks( lastcurrentnoteticks )
@@ -771,15 +774,28 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                 if self.helper[ self.state ][0] < len(self.helper[ self.state ][1]) - self.helperlinemax:
                     self.helper[ self.state ][0] += 1
                     self.sethelperlines( self.state )
+                else:
+                    self.setalert("At end of help list.")
                 return 1
             elif event.key == pygame.K_k or event.key == pygame.K_UP: # press up
                 # move down in the current helper list
                 if self.helper[ self.state ][0] > 0:
                     self.helper[ self.state ][0] -= 1
                     self.sethelperlines( self.state )
+                else:
+                    self.setalert("At beginning of help.")
+                return 1
+            elif event.key == pygame.K_g:
+                if pygame.key.get_mods() & pygame.KMOD_SHIFT:
+                    self.helper[ self.state ][0] = len(self.helper[ self.state ][1])-self.helperlinemax
+                    self.setalert("At end of help list.")
+                else:
+                    self.setalert("At beginning of help.")
+                    self.helper[ self.state ][0] = 0
+                self.sethelperlines( self.state )
                 return 1
             elif ( event.key == pygame.K_SLASH ):
-                self.preemptor = self.preemptorlist["search help"]
+                self.preemptor = self.preemptingfor["search help"]
                 self.setalert("Search in help.")
                 return 1
             elif ( event.key == pygame.K_n ):
@@ -789,7 +805,23 @@ class EditClass( DDRClass ): # inherit from the DDRClass
                 else:
                     self.setalert("Try ctrl+/ to search help.")
                 return 1
-                
+            elif event.key == pygame.K_PAGEUP:
+                if self.helper[ self.state ][0] > self.helperlinemax:
+                    self.helper[ self.state ][0] -= self.helperlinemax
+                else:
+                    self.helper[ self.state ][0] = 0
+                    self.setalert("At beginning of help.")
+                self.sethelperlines( self.state )
+                return 1
+            elif event.key == pygame.K_PAGEDOWN:
+                if self.helper[ self.state ][0] < len(self.helper[ self.state ][1]) - 2*self.helperlinemax:
+                    self.helper[ self.state ][0] += self.helperlinemax
+                else:
+                    self.setalert("At end of help list.")
+                    self.helper[ self.state ][0] = len(self.helper[ self.state ][1])-self.helperlinemax
+
+                self.sethelperlines( self.state )
+                return 1
                 
         return 0
 
