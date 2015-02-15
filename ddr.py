@@ -527,6 +527,7 @@ class DDRClass( GameChunkClass ):
             
             if self.looping and self.currentabsoluteticks >= self.bookmarkticks[self.loopingbookmarkindex+1]:
                 self.setcurrentticksandload( self.bookmarkticks[self.loopingbookmarkindex] )
+                self.setalert("Looped back to bookmark "+str(self.loopingbookmarkindex))
 
             else:
                 # not looping, or we are proceeding as normal 
