@@ -33,9 +33,15 @@ def getpiecesettings( piecedir ):
     for f in descendingdirectorycontents:
         if f[-4:] == ".mid":
             difficulties.append( int(f[-5]) )
-    difficulties.sort()
-    settings["AllowedDifficulties"] = difficulties
-    settings["Difficulty"] = difficulties[0]
+
+    if len(difficulties):
+        difficulties.sort()
+        settings["AllowedDifficulties"] = difficulties
+        settings["Difficulty"] = difficulties[0]
+    else:
+        settings["AllowedDifficulties"] = [ config.DEFAULTdifficulty ]
+        settings["Difficulty"] = config.DEFAULTdifficulty
+        
     
     if not "BookmarkTicks" in settings:
         settings["BookmarkTicks"] = [] 
